@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moy Diary Pro - Function Wise Search</title>
+    <title>Moy Diary Pro - Total Tally & Duplicate Check</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
@@ -22,64 +22,63 @@
         <div class="mt-6 space-y-4">
             <input type="hidden" id="editId">
             
-            <div class="grid grid-cols-2 gap-4 bg-indigo-50 p-3 rounded-xl border border-indigo-100">
+            <div class="grid grid-cols-2 gap-4 bg-indigo-50 p-3 rounded-xl border border-indigo-100 shadow-inner">
                 <div>
-                    <label class="text-[10px] font-bold text-indigo-400 uppercase">விசேஷம் / Event</label>
-                    <input id="event" type="text" oninput="handleInput(this, 'event')" placeholder="எ.கா: திருமணம்" class="w-full bg-transparent border-b-2 border-indigo-200 p-1 outline-none font-bold">
+                    <label class="text-[10px] font-bold text-indigo-400 uppercase tracking-tighter">விசேஷம் / Event</label>
+                    <input id="event" type="text" oninput="handleInput(this, 'event')" placeholder="எ.கா: திருமணம்" class="w-full bg-transparent border-b-2 border-indigo-200 p-1 outline-none font-bold text-indigo-900 uppercase">
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-indigo-400 uppercase">தேதி / Date</label>
-                    <input id="date" type="date" class="w-full bg-transparent border-b-2 border-indigo-200 p-1 outline-none font-bold">
+                    <label class="text-[10px] font-bold text-indigo-400 uppercase tracking-tighter">தேதி / Date</label>
+                    <input id="date" type="date" class="w-full bg-transparent border-b-2 border-indigo-200 p-1 outline-none font-bold text-indigo-900">
                 </div>
             </div>
 
-            <div>
+            <div class="relative">
                 <label class="text-xs font-bold text-gray-500 uppercase">பெயர் / Name</label>
-                <input id="name" type="text" oninput="handleInput(this, 'name')" class="w-full border-2 p-3 rounded-xl outline-none focus:border-indigo-500" placeholder="Ranjith Kumar">
+                <input id="name" type="text" oninput="handleInput(this, 'name')" class="w-full border-2 p-3 rounded-xl outline-none focus:border-indigo-500 transition-all" placeholder="Ranjith Kumar">
                 <div id="nameSuggestions" class="suggestion-box hidden shadow-lg"></div>
             </div>
 
-            <div>
+            <div class="relative">
                 <label class="text-xs font-bold text-gray-500 uppercase">ஊர் / Area</label>
-                <input id="city" type="text" oninput="handleInput(this, 'city')" class="w-full border-2 p-3 rounded-xl outline-none focus:border-indigo-500" placeholder="Cuddalore">
+                <input id="city" type="text" oninput="handleInput(this, 'city')" class="w-full border-2 p-3 rounded-xl outline-none focus:border-indigo-500 transition-all" placeholder="Cuddalore">
                 <div id="citySuggestions" class="suggestion-box hidden shadow-lg"></div>
             </div>
             
             <div class="grid grid-cols-2 gap-4">
-                <input id="cash" type="number" placeholder="ரூபாய் / Cash (₹)" class="border-2 p-3 rounded-xl outline-none">
-                <input id="gold" type="number" step="0.01" placeholder="தங்கம் / Gold (g)" class="border-2 p-3 rounded-xl outline-none">
+                <input id="cash" type="number" placeholder="ரூபாய் / Cash (₹)" class="border-2 p-3 rounded-xl outline-none focus:border-indigo-500">
+                <input id="gold" type="number" step="0.01" placeholder="தங்கம் / Gold (g)" class="border-2 p-3 rounded-xl outline-none focus:border-indigo-500">
             </div>
 
             <div class="grid grid-cols-2 gap-4">
-                <select id="type" class="border-2 p-3 rounded-xl bg-white outline-none">
+                <select id="type" class="border-2 p-3 rounded-xl bg-white outline-none focus:border-indigo-500 font-bold text-gray-700">
                     <option value="Received">வரவு (Received)</option>
                     <option value="Returned">செலுத்தியது (Returned)</option>
                 </select>
-                <div class="flex items-end">
-                    <textarea id="notes" placeholder="சிறு குறிப்பு / Notes..." class="w-full border-2 p-2 rounded-xl h-12 text-sm outline-none"></textarea>
-                </div>
+                <textarea id="notes" placeholder="குறிப்பு / Notes..." class="w-full border-2 p-2 rounded-xl h-12 text-sm outline-none focus:border-indigo-500"></textarea>
             </div>
 
             <div class="flex gap-2 pt-2">
-                <button onclick="saveMoy()" id="saveBtn" class="flex-1 bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-lg active:scale-95 transition">SAVE / சேமி</button>
-                <button onclick="resetAllFields()" id="cancelBtn" class="bg-gray-200 text-gray-600 font-bold px-4 rounded-2xl text-xs uppercase">Reset All</button>
+                <button onclick="saveMoy()" id="saveBtn" class="flex-1 bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-lg active:scale-95 transition-all uppercase tracking-wider">SAVE / சேமி</button>
+                <button onclick="resetAllFields()" id="cancelBtn" class="bg-gray-200 text-gray-600 font-bold px-4 rounded-2xl text-[10px] uppercase hover:bg-gray-300">Reset All</button>
             </div>
         </div>
     </div>
 
     <div class="max-w-xl mx-auto mt-8">
-        <div class="bg-white p-5 rounded-2xl shadow-md border">
+        <div class="bg-white p-5 rounded-2xl shadow-md border mb-4">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="font-bold text-gray-700 text-sm uppercase">தேடல் / Search (பெயர் / ஊர் / விசேஷம்)</h3>
-                <button onclick="exportToExcel()" class="bg-green-600 text-white text-[10px] font-bold py-2 px-3 rounded-lg shadow-sm">EXCEL 📥</button>
+                <h3 class="font-bold text-gray-700 text-xs uppercase tracking-widest">Search (Name / Area / Event)</h3>
+                <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold py-2 px-3 rounded-lg shadow-sm transition-all">EXCEL 📥</button>
             </div>
-            <input type="text" id="search" onkeyup="renderList()" placeholder="Type Name, Area or Function Name..." class="w-full border-b-2 border-indigo-400 p-2 text-lg outline-none font-semibold text-indigo-800">
+            <input type="text" id="search" onkeyup="renderList()" placeholder="பெயர் அல்லது ஊர் மூலம் தேடுக..." class="w-full border-b-2 border-indigo-400 p-2 text-lg outline-none font-semibold text-indigo-800">
         </div>
 
-        <div id="moyList" class="mt-6 space-y-4"></div>
+        <div id="moyList" class="space-y-4"></div>
     </div>
 
     <script>
+        // Firebase Configuration (Family Diary)
         const firebaseConfig = {
             apiKey: "AIzaSyBLWrs7rGUhfRDuD8dPMZdjjCYMSAtPleM",
             authDomain: "family-dairy-192b9.firebaseapp.com",
@@ -101,18 +100,34 @@
 
         async function saveMoy() {
             const id = document.getElementById('editId').value;
+            const name = document.getElementById('name').value.trim();
+            const city = document.getElementById('city').value.trim();
+            const eventName = document.getElementById('event').value.trim();
+            
+            if(!name || !city || !eventName) return alert("பெயர், ஊர் மற்றும் விசேஷம் அவசியம்!");
+
+            // Logic 1: Duplicate Check within Same Event
+            if (!id) {
+                const isDuplicate = allRecords.find(r => 
+                    r.name.toLowerCase() === name.toLowerCase() && 
+                    r.city.toLowerCase() === city.toLowerCase() && 
+                    r.event.toLowerCase() === eventName.toLowerCase()
+                );
+                if (isDuplicate) {
+                    if (!confirm(`எச்சரிக்கை: ${name} ஏற்கனவே இந்த விசேஷத்தில் பதிவு செய்யப்பட்டுள்ளார். மீண்டும் ஒருமுறை சேர்க்கவா?`)) return;
+                }
+            }
+
             const data = {
-                name: document.getElementById('name').value.trim(),
-                city: document.getElementById('city').value.trim(),
+                name: name,
+                city: city,
                 cash: Number(document.getElementById('cash').value) || 0,
                 gold: Number(document.getElementById('gold').value) || 0,
                 type: document.getElementById('type').value,
-                event: document.getElementById('event').value.trim(),
+                event: eventName,
                 notes: document.getElementById('notes').value,
                 date: document.getElementById('date').value
             };
-
-            if(!data.name || !data.city || !data.event) return alert("பெயர், ஊர் மற்றும் விசேஷம் அவசியம்!");
 
             if(id) {
                 await db.collection("moy_records").doc(id).update(data);
@@ -121,7 +136,6 @@
                 await db.collection("moy_records").add(data);
             }
             
-            // Only Reset specific fields, keep Event and Date
             resetEntryFields();
             loadData();
         }
@@ -143,18 +157,23 @@
                 d.event.toLowerCase().includes(search)
             );
 
-            if(search.length > 0 && filtered.length > 0) {
+            // Logic 2: Balance Calculation Summary
+            if(search.length > 2 && filtered.length > 0) {
                 let tin = 0, gin = 0, tout = 0, gout = 0;
                 filtered.forEach(d => {
                     if(d.type === "Received") { tin += d.cash; gin += d.gold; }
                     else { tout += d.cash; gout += d.gold; }
                 });
+
+                let bCash = tin - tout;
+                let bGold = gin - gout;
+
                 list.innerHTML = `
-                <div class="bg-indigo-900 text-white p-5 rounded-2xl mb-4 shadow-xl border-b-4 border-yellow-400">
-                    <p class="text-[10px] opacity-70 uppercase font-black tracking-widest">தேடல் முடிவுகளின் மொத்தம் / Search Summary</p>
-                    <div class="grid grid-cols-2 mt-3 gap-4">
+                <div class="bg-indigo-900 text-white p-5 rounded-2xl mb-6 shadow-xl border-b-4 border-yellow-400">
+                    <p class="text-[10px] opacity-70 uppercase font-black tracking-widest mb-3">மொத்த கணக்கு / Account Summary</p>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
                         <div class="border-r border-indigo-700">
-                            <p class="text-[9px] text-green-400 font-bold uppercase">வரவு (IN)</p>
+                            <p class="text-[9px] text-green-400 font-bold uppercase">பெற்றது (IN)</p>
                             <p class="text-xl font-black">₹${tin}</p>
                             <p class="text-xs">💍 ${gin.toFixed(2)}g</p>
                         </div>
@@ -164,32 +183,39 @@
                             <p class="text-xs">💍 ${gout.toFixed(2)}g</p>
                         </div>
                     </div>
+                    <div class="pt-3 border-t border-indigo-700 flex justify-between items-center">
+                        <span class="text-[10px] font-bold">பாக்கி / BALANCE:</span>
+                        <div class="text-right">
+                            <p class="text-lg font-black ${bCash > 0 ? 'text-red-300' : 'text-green-300'}">₹${Math.abs(bCash)} ${bCash > 0 ? 'தர வேண்டும்' : 'கூடுதல்'}</p>
+                            <p class="text-xs font-bold">${Math.abs(bGold).toFixed(2)}g Gold ${bGold > 0 ? 'தர வேண்டும்' : 'கூடுதல்'}</p>
+                        </div>
+                    </div>
                 </div>`;
             }
 
             filtered.forEach(d => {
-                const isReceived = d.type === "Received";
+                const isRec = d.type === "Received";
                 list.innerHTML += `
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border-l-8 ${isReceived ? 'border-green-500' : 'border-orange-500'}">
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border-l-8 ${isRec ? 'border-green-500' : 'border-orange-500'}">
                         <div class="flex justify-between items-start">
                             <div>
                                 <h4 class="font-black text-gray-800 text-lg leading-tight">${d.name}</h4>
                                 <p class="text-[11px] text-blue-600 font-bold underline uppercase tracking-tighter">${d.city}</p>
                             </div>
                             <div class="flex gap-1">
-                                <button onclick="editMoy('${d.id}')" class="bg-blue-50 text-blue-600 font-bold text-[9px] p-2 rounded-lg border border-blue-100">EDIT</button>
-                                <button onclick="deleteMoy('${d.id}')" class="bg-red-50 text-red-600 font-bold text-[9px] p-2 rounded-lg border border-red-100">DEL</button>
+                                <button onclick="editMoy('${d.id}')" class="bg-blue-50 text-blue-600 font-bold text-[9px] p-2 rounded-lg border border-blue-100 uppercase">EDIT</button>
+                                <button onclick="deleteMoy('${d.id}')" class="bg-red-50 text-red-600 font-bold text-[9px] p-2 rounded-lg border border-red-100 uppercase">DEL</button>
                             </div>
                         </div>
-                        <div class="mt-3 text-sm flex justify-between bg-slate-50 p-2 rounded-xl font-bold">
-                            <span class="text-gray-700">💵 ₹${d.cash}</span> 
-                            <span class="text-gray-700">💍 ${d.gold}g</span>
+                        <div class="mt-3 text-sm flex justify-between bg-slate-50 p-2 rounded-xl font-bold border border-slate-100">
+                            <span class="text-gray-700 tracking-tight">💵 ₹${d.cash}</span> 
+                            <span class="text-gray-700 tracking-tight">💍 ${d.gold}g Gold</span>
                         </div>
                         <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-50">
-                            <p class="text-[9px] text-gray-400 font-black uppercase tracking-widest">🎊 ${d.event}</p>
+                            <p class="text-[9px] text-gray-400 font-black uppercase tracking-widest truncate max-w-[150px]">🎊 ${d.event}</p>
                             <p class="text-[9px] text-gray-400 font-bold italic">${d.date}</p>
                         </div>
-                        ${d.notes ? `<p class="mt-2 text-[10px] bg-yellow-50 p-2 rounded-lg text-gray-600 border-l-2 border-yellow-200 italic">Note: ${d.notes}</p>` : ''}
+                        ${d.notes ? `<p class="mt-2 text-[10px] bg-yellow-50 p-2 rounded-lg text-gray-600 border-l-2 border-yellow-200 italic font-medium">Note: ${d.notes}</p>` : ''}
                     </div>`;
             });
         }
@@ -210,7 +236,7 @@
         }
 
         async function deleteMoy(id) {
-            if(confirm("Are you sure?")) {
+            if(confirm("நிச்சயமாக இந்த கணக்கை நீக்க வேண்டுமா? / Delete permanently?")) {
                 await db.collection("moy_records").doc(id).delete();
                 loadData();
             }
@@ -235,12 +261,16 @@
 
         function exportToExcel() {
             const search = document.getElementById('search').value.toLowerCase();
-            const dataToExport = allRecords.filter(d => d.name.toLowerCase().includes(search) || d.city.toLowerCase().includes(search) || d.event.toLowerCase().includes(search))
-                                           .map(({id, ...rest}) => rest);
+            const dataToExport = allRecords.filter(d => 
+                d.name.toLowerCase().includes(search) || 
+                d.city.toLowerCase().includes(search) || 
+                d.event.toLowerCase().includes(search)
+            ).map(({id, ...rest}) => rest);
+            
             const ws = XLSX.utils.json_to_sheet(dataToExport);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "MoyRecords");
-            XLSX.writeFile(wb, `Moy_Report_${new Date().toLocaleDateString()}.xlsx`);
+            XLSX.writeFile(wb, `Moy_Tally_${new Date().toISOString().split('T')[0]}.xlsx`);
         }
 
         function showSuggestions(field) {
