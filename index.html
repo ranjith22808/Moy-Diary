@@ -3,29 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moy Diary Pro - Dynamic Excel & Search Summary</title>
+    <title>Moy Diary Pro - Enhanced UI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        .suggestion-box { position: absolute; z-index: 50; width: 100%; background: white; border: 1px solid #ddd; max-height: 150px; overflow-y: auto; border-radius: 8px; }
-        .suggestion-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
-        .suggestion-item:hover { background-color: #f0f7ff; }
+        .suggestion-box { position: absolute; z-index: 50; width: 100%; background: white; border: 1px solid #ddd; max-height: 150px; overflow-y: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        .suggestion-item { padding: 12px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 14px; font-weight: 600; }
+        .suggestion-item:hover { background-color: #f0f7ff; color: #4f46e5; }
+        input:focus { border-color: #4f46e5 !important; ring: 2px; ring-color: #4f46e5; }
     </style>
 </head>
-<body class="bg-slate-100 p-3 font-sans pb-20">
+<body class="bg-slate-100 p-3 font-sans pb-24">
 
-    <div class="max-w-xl mx-auto bg-white rounded-2xl shadow-2xl p-6 border-t-8 border-indigo-600">
-        <h2 class="text-xl font-black text-indigo-700 text-center uppercase tracking-widest">Moy Diary / மொய் டைரி</h2>
+    <div class="max-w-xl mx-auto bg-white rounded-3xl shadow-2xl p-6 border-t-8 border-indigo-600">
+        <h2 class="text-2xl font-black text-indigo-700 text-center uppercase tracking-widest mb-4">Moy Diary / மொய் டைரி</h2>
         
-        <div class="mt-6 space-y-4">
+        <div class="space-y-4">
             <input type="hidden" id="editId">
             
-            <div class="grid grid-cols-2 gap-4 bg-indigo-50 p-3 rounded-xl border border-indigo-100 shadow-inner">
-                <div>
+            <div class="grid grid-cols-2 gap-4 bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
+                <div class="relative">
                     <label class="text-[10px] font-bold text-indigo-400 uppercase tracking-tighter">விசேஷம் / Event</label>
-                    <input id="event" type="text" oninput="handleInput(this, 'event')" placeholder="எ.கா: திருமணம்" class="w-full bg-transparent border-b-2 border-indigo-200 p-1 outline-none font-bold text-indigo-900 uppercase">
+                    <input id="event" type="text" oninput="handleInput(this, 'event')" placeholder="எ.கா: திருமணம்" class="w-full bg-transparent border-b-2 border-indigo-200 p-1 outline-none font-black text-indigo-900 uppercase">
+                    <div id="eventSuggestions" class="suggestion-box hidden"></div>
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-indigo-400 uppercase tracking-tighter">தேதி / Date</label>
@@ -35,45 +37,43 @@
 
             <div class="relative">
                 <label class="text-xs font-bold text-gray-500 uppercase">பெயர் / Name</label>
-                <input id="name" type="text" oninput="handleInput(this, 'name')" class="w-full border-2 p-3 rounded-xl outline-none focus:border-indigo-500 transition-all" placeholder="Ranjith Kumar">
-                <div id="nameSuggestions" class="suggestion-box hidden shadow-lg"></div>
+                <input id="name" type="text" oninput="handleInput(this, 'name')" class="w-full border-2 p-3 rounded-xl outline-none" placeholder="Ranjith Kumar">
+                <div id="nameSuggestions" class="suggestion-box hidden"></div>
             </div>
 
             <div class="relative">
                 <label class="text-xs font-bold text-gray-500 uppercase">ஊர் / Area</label>
-                <input id="city" type="text" oninput="handleInput(this, 'city')" class="w-full border-2 p-3 rounded-xl outline-none focus:border-indigo-500 transition-all" placeholder="Cuddalore">
-                <div id="citySuggestions" class="suggestion-box hidden shadow-lg"></div>
+                <input id="city" type="text" oninput="handleInput(this, 'city')" class="w-full border-2 p-3 rounded-xl outline-none" placeholder="Cuddalore">
+                <div id="citySuggestions" class="suggestion-box hidden"></div>
             </div>
             
             <div class="grid grid-cols-2 gap-4">
-                <input id="cash" type="number" placeholder="ரூபாய் / Cash (₹)" class="border-2 p-3 rounded-xl outline-none focus:border-indigo-500 font-bold">
-                <input id="gold" type="number" step="0.01" placeholder="தங்கம் / Gold (g)" class="border-2 p-3 rounded-xl outline-none focus:border-indigo-500 font-bold">
+                <input id="cash" type="number" placeholder="ரூபாய் / Cash (₹)" class="border-2 p-3 rounded-xl outline-none font-bold">
+                <input id="gold" type="number" step="0.01" placeholder="தங்கம் / Gold (g)" class="border-2 p-3 rounded-xl outline-none font-bold">
             </div>
 
             <div class="grid grid-cols-2 gap-4">
-                <select id="type" class="border-2 p-3 rounded-xl bg-white outline-none focus:border-indigo-500 font-bold text-gray-700">
+                <select id="type" class="border-2 p-3 rounded-xl bg-white font-bold text-gray-700 outline-none">
                     <option value="Received">வரவு (Received)</option>
                     <option value="Returned">செலுத்தியது (Returned)</option>
                 </select>
-                <textarea id="notes" placeholder="குறிப்பு / Notes..." class="w-full border-2 p-2 rounded-xl h-12 text-sm outline-none focus:border-indigo-500"></textarea>
+                <textarea id="notes" placeholder="குறிப்பு / Notes..." class="w-full border-2 p-2 rounded-xl h-12 text-sm outline-none"></textarea>
             </div>
 
             <div class="flex gap-2 pt-2">
-                <button onclick="saveMoy()" id="saveBtn" class="flex-1 bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-lg active:scale-95 transition-all uppercase tracking-wider">SAVE / சேமி</button>
-                <button onclick="resetAllFields()" id="cancelBtn" class="bg-gray-200 text-gray-600 font-bold px-4 rounded-2xl text-[10px] uppercase hover:bg-gray-300 transition-all">Reset All</button>
+                <button onclick="saveMoy()" id="saveBtn" class="flex-1 bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-lg active:scale-95 transition-all">SAVE / சேமி</button>
+                <button onclick="resetAllFields()" class="bg-gray-200 text-gray-600 font-bold px-4 rounded-2xl text-[10px] uppercase">Reset All</button>
             </div>
         </div>
     </div>
 
     <div class="max-w-xl mx-auto mt-8">
-        <div class="bg-white p-5 rounded-2xl shadow-md border mb-4">
+        <div class="bg-white p-5 rounded-3xl shadow-md border mb-4">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="font-bold text-gray-700 text-xs uppercase tracking-widest">Search (Name / Area / Event)</h3>
-                <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold py-2 px-3 rounded-lg shadow-sm transition-all flex items-center gap-1">
-                    EXCEL 📥
-                </button>
+                <h3 class="font-bold text-gray-500 text-[10px] uppercase tracking-widest">Search (Name / Area / Event)</h3>
+                <button onclick="exportToExcel()" class="bg-green-600 text-white text-[10px] font-bold py-2 px-3 rounded-lg flex items-center gap-1">EXCEL 📥</button>
             </div>
-            <input type="text" id="search" onkeyup="renderList()" placeholder="பெயர் அல்லது ஊர் மூலம் தேடுக..." class="w-full border-b-2 border-indigo-400 p-2 text-lg outline-none font-semibold text-indigo-800">
+            <input type="text" id="search" onkeyup="renderList()" placeholder="Type Name, Area or Event..." class="w-full border-b-2 border-indigo-400 p-2 text-xl outline-none font-bold text-indigo-900">
         </div>
 
         <div id="moyList" class="space-y-4"></div>
@@ -96,7 +96,7 @@
 
         function handleInput(el, field) {
             el.value = el.value.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-            if(field === 'name' || field === 'city') showSuggestions(field);
+            showSuggestions(field);
         }
 
         async function saveMoy() {
@@ -108,33 +108,14 @@
             if(!name || !city || !eventName) return alert("பெயர், ஊர் மற்றும் விசேஷம் அவசியம்!");
 
             if (!id) {
-                const isDuplicate = allRecords.find(r => 
-                    r.name.toLowerCase() === name.toLowerCase() && 
-                    r.city.toLowerCase() === city.toLowerCase() && 
-                    r.event.toLowerCase() === eventName.toLowerCase()
-                );
-                if (isDuplicate) {
-                    if (!confirm(`எச்சரிக்கை: ${name} ஏற்கனவே இந்த விசேஷத்தில் பதிவு செய்யப்பட்டுள்ளார். மீண்டும் ஒருமுறை சேர்க்கவா?`)) return;
-                }
+                const isDuplicate = allRecords.find(r => r.name.toLowerCase() === name.toLowerCase() && r.city.toLowerCase() === city.toLowerCase() && r.event.toLowerCase() === eventName.toLowerCase());
+                if (isDuplicate && !confirm(`Duplicate Found: ${name} ஏற்கனவே இந்த விசேஷத்தில் உள்ளார். மீண்டும் சேர்க்கவா?`)) return;
             }
 
-            const data = {
-                name: name,
-                city: city,
-                cash: Number(document.getElementById('cash').value) || 0,
-                gold: Number(document.getElementById('gold').value) || 0,
-                type: document.getElementById('type').value,
-                event: eventName,
-                notes: document.getElementById('notes').value,
-                date: document.getElementById('date').value
-            };
+            const data = { name, city, cash: Number(document.getElementById('cash').value) || 0, gold: Number(document.getElementById('gold').value) || 0, type: document.getElementById('type').value, event: eventName, notes: document.getElementById('notes').value, date: document.getElementById('date').value };
 
-            if(id) {
-                await db.collection("moy_records").doc(id).update(data);
-                alert("Updated!");
-            } else {
-                await db.collection("moy_records").add(data);
-            }
+            if(id) await db.collection("moy_records").doc(id).update(data);
+            else await db.collection("moy_records").add(data);
             
             resetEntryFields();
             loadData();
@@ -152,45 +133,36 @@
             const list = document.getElementById('moyList');
             list.innerHTML = "";
 
-            const filtered = allRecords.filter(d => 
-                d.name.toLowerCase().includes(searchLower) || 
-                d.city.toLowerCase().includes(searchLower) || 
-                d.event.toLowerCase().includes(searchLower)
-            );
+            const filtered = allRecords.filter(d => d.name.toLowerCase().includes(searchLower) || d.city.toLowerCase().includes(searchLower) || d.event.toLowerCase().includes(searchLower));
 
             if(search.length > 2 && filtered.length > 0) {
                 let tin = 0, gin = 0, tout = 0, gout = 0;
-                filtered.forEach(d => {
-                    if(d.type === "Received") { tin += d.cash; gin += d.gold; }
-                    else { tout += d.cash; gout += d.gold; }
-                });
+                filtered.forEach(d => { if(d.type === "Received") { tin += d.cash; gin += d.gold; } else { tout += d.cash; gout += d.gold; } });
 
                 let bCash = tin - tout;
                 let bGold = gin - gout;
                 const displayTitle = search.charAt(0).toUpperCase() + search.slice(1).toLowerCase();
 
                 list.innerHTML = `
-                <div class="bg-indigo-900 text-white p-5 rounded-2xl mb-6 shadow-xl border-b-4 border-yellow-400">
-                    <p class="text-[10px] opacity-70 uppercase font-black tracking-widest mb-3 underline">
-                        ${displayTitle} - கணக்கு விவரம் / Summary
-                    </p>
-                    <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="bg-indigo-900 text-white p-6 rounded-3xl mb-6 shadow-xl border-b-8 border-yellow-400">
+                    <p class="text-[10px] opacity-70 uppercase font-black tracking-widest mb-4 underline">${displayTitle} - Summary</p>
+                    <div class="grid grid-cols-2 gap-4 mb-4 text-center">
                         <div class="border-r border-indigo-700">
-                            <p class="text-[9px] text-green-400 font-bold uppercase">பெற்றது (IN)</p>
+                            <p class="text-[10px] text-green-400 font-black">பெற்றது (IN)</p>
                             <p class="text-xl font-black">₹${tin}</p>
-                            <p class="text-xs">💍 ${gin.toFixed(2)}g</p>
+                            <p class="text-xs font-bold text-indigo-300">${gin.toFixed(2)}g</p>
                         </div>
                         <div>
-                            <p class="text-[9px] text-orange-400 font-bold uppercase">செலுத்தியது (OUT)</p>
+                            <p class="text-[10px] text-orange-400 font-black">செலுத்தியது (OUT)</p>
                             <p class="text-xl font-black">₹${tout}</p>
-                            <p class="text-xs">💍 ${gout.toFixed(2)}g</p>
+                            <p class="text-xs font-bold text-indigo-300">${gout.toFixed(2)}g</p>
                         </div>
                     </div>
-                    <div class="pt-3 border-t border-indigo-700 flex justify-between items-center">
-                        <span class="text-[10px] font-bold">பாக்கி / BALANCE:</span>
-                        <div class="text-right">
-                            <p class="text-lg font-black ${bCash > 0 ? 'text-red-300' : 'text-green-300'}">₹${Math.abs(bCash)} ${bCash > 0 ? 'தர வேண்டும்' : 'கூடுதல்'}</p>
-                            <p class="text-xs font-bold tracking-tight">${Math.abs(bGold).toFixed(2)}g Gold ${bGold > 0 ? 'தர வேண்டும்' : 'கூடுதல்'}</p>
+                    <div class="pt-4 border-t border-indigo-700 flex justify-between items-center">
+                        <span class="text-[11px] font-black uppercase">Balance பாக்கி:</span>
+                        <div class="text-right leading-tight">
+                            <p class="text-lg font-black ${bCash > 0 ? 'text-red-300' : 'text-green-300'}">₹${Math.abs(bCash)} ${bCash > 0 ? 'தர வேண்டும் (GIVE)' : 'கூடுதல் (EXTRA)'}</p>
+                            <p class="text-[10px] font-bold ${bGold > 0 ? 'text-red-300' : 'text-green-300'}">${Math.abs(bGold).toFixed(2)}g Gold ${bGold > 0 ? 'தர வேண்டும் (GIVE)' : 'கூடுதல் (EXTRA)'}</p>
                         </div>
                     </div>
                 </div>`;
@@ -199,26 +171,28 @@
             filtered.forEach(d => {
                 const isRec = d.type === "Received";
                 list.innerHTML += `
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border-l-8 ${isRec ? 'border-green-500' : 'border-orange-500'}">
-                        <div class="flex justify-between items-start">
+                    <div class="bg-white p-5 rounded-3xl shadow-sm border-l-[12px] ${isRec ? 'border-green-500' : 'border-orange-500'}">
+                        <div class="flex justify-between items-start mb-2">
                             <div>
-                                <h4 class="font-black text-gray-800 text-lg leading-tight">${d.name}</h4>
-                                <p class="text-[11px] text-blue-600 font-bold underline uppercase tracking-tighter">${d.city}</p>
+                                <h4 class="font-black text-gray-800 text-xl">${d.name}</h4>
+                                <p class="text-xs text-blue-600 font-black uppercase underline">${d.city}</p>
                             </div>
                             <div class="flex gap-1">
-                                <button onclick="editMoy('${d.id}')" class="bg-blue-50 text-blue-600 font-bold text-[9px] p-2 rounded-lg border border-blue-100 uppercase transition-all">EDIT</button>
-                                <button onclick="deleteMoy('${d.id}')" class="bg-red-50 text-red-600 font-bold text-[9px] p-2 rounded-lg border border-red-100 uppercase transition-all">DEL</button>
+                                <button onclick="editMoy('${d.id}')" class="text-blue-600 text-[10px] font-black border border-blue-100 p-2 rounded-xl bg-blue-50">EDIT</button>
+                                <button onclick="deleteMoy('${d.id}')" class="text-red-600 text-[10px] font-black border border-red-100 p-2 rounded-xl bg-red-50">DEL</button>
                             </div>
                         </div>
-                        <div class="mt-3 text-sm flex justify-between bg-slate-50 p-2 rounded-xl font-bold border border-slate-100 shadow-inner">
-                            <span class="text-gray-700 tracking-tight">💵 ₹${d.cash}</span> 
-                            <span class="text-gray-700 tracking-tight">💍 ${d.gold}g Gold</span>
+                        
+                        <div class="bg-slate-800 text-white text-[11px] font-black uppercase tracking-wider py-1 px-3 rounded-lg inline-block mb-3">
+                            🎊 ${d.event}
                         </div>
-                        <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-50">
-                            <p class="text-[9px] text-gray-400 font-black uppercase tracking-widest truncate max-w-[150px]">🎊 ${d.event}</p>
-                            <p class="text-[9px] text-gray-400 font-bold italic">${d.date}</p>
+
+                        <div class="grid grid-cols-2 text-sm bg-slate-100 p-3 rounded-2xl font-black border border-slate-200">
+                            <span class="text-slate-700 italic">💵 ₹${d.cash}</span> 
+                            <span class="text-slate-700 text-right">💍 ${d.gold}g</span>
                         </div>
-                        ${d.notes ? `<p class="mt-2 text-[10px] bg-yellow-50 p-2 rounded-lg text-gray-600 border-l-2 border-yellow-200 italic font-medium shadow-sm">Note: ${d.notes}</p>` : ''}
+                        <div class="mt-3 text-[10px] text-gray-400 font-bold italic text-right uppercase">📅 ${d.date}</div>
+                        ${d.notes ? `<p class="mt-2 text-[11px] bg-yellow-50 p-3 rounded-xl text-gray-600 border-l-4 border-yellow-200 font-medium">Note: ${d.notes}</p>` : ''}
                     </div>`;
             });
         }
@@ -238,12 +212,7 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        async function deleteMoy(id) {
-            if(confirm("நிச்சயமாக இந்த கணக்கை நீக்க வேண்டுமா? / Delete permanently?")) {
-                await db.collection("moy_records").doc(id).delete();
-                loadData();
-            }
-        }
+        async function deleteMoy(id) { if(confirm("Confirm Delete?")) { await db.collection("moy_records").doc(id).delete(); loadData(); } }
 
         function resetEntryFields() {
             document.getElementById('editId').value = "";
@@ -256,31 +225,15 @@
             document.getElementById('name').focus();
         }
 
-        function resetAllFields() {
-            resetEntryFields();
-            document.getElementById('event').value = "";
-            document.getElementById('date').valueAsDate = new Date();
-        }
+        function resetAllFields() { resetEntryFields(); document.getElementById('event').value = ""; document.getElementById('date').valueAsDate = new Date(); }
 
         function exportToExcel() {
             const search = document.getElementById('search').value.trim();
-            const searchLower = search.toLowerCase();
-            const dataToExport = allRecords.filter(d => 
-                d.name.toLowerCase().includes(searchLower) || 
-                d.city.toLowerCase().includes(searchLower) || 
-                d.event.toLowerCase().includes(searchLower)
-            ).map(({id, ...rest}) => rest);
-            
-            if(dataToExport.length === 0) return alert("டேட்டா எதுவும் இல்லை! / No data to export");
-
+            const dataToExport = allRecords.filter(d => d.name.toLowerCase().includes(search.toLowerCase()) || d.city.toLowerCase().includes(search.toLowerCase()) || d.event.toLowerCase().includes(search.toLowerCase())).map(({id, ...rest}) => rest);
             const ws = XLSX.utils.json_to_sheet(dataToExport);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "MoyRecords");
-
-            const dateStr = new Date().toISOString().split('T')[0];
-            const fileName = search ? `Moy_Report_${search}_${dateStr}.xlsx` : `Moy_Full_Report_${dateStr}.xlsx`;
-
-            XLSX.writeFile(wb, fileName);
+            XLSX.writeFile(wb, `Moy_Report_${search || 'Full'}_${new Date().toLocaleDateString()}.xlsx`);
         }
 
         function showSuggestions(field) {
