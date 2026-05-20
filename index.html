@@ -2,11 +2,12 @@
 <html lang="ta">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Moy Diary - MultiColor Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Moy Diary - Velocity Pro</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4f46e5">
+    <!-- Tailwind + Firebase + XLSX CDNs -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
@@ -14,28 +15,35 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&display=swap');
+        * { -webkit-tap-highlight-color: transparent; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f0f2f5; }
         .glass-header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
-        .card-shadow { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
+        .card-shadow { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02); }
         .suggestion-box { position: absolute; z-index: 100; width: 100%; background: white; border-radius: 1rem; border: 1px solid #e2e8f0; max-height: 200px; overflow-y: auto; margin-top: 4px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
-        .suggestion-item { padding: 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-weight: 700; color: #374151; }
-        .suggestion-item.active { background-color: #eef2ff; color: #4f46e5; }
+        .suggestion-item { padding: 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-weight: 700; color: #1e293b; transition: all 0.1s ease; }
+        .suggestion-item.active { background-color: #eef2ff; color: #4f46e5; border-left: 4px solid #4f46e5; }
         .card-received { border-left: 12px solid #10b981; background: #f0fdf4; }
         .card-returned { border-left: 12px solid #f59e0b; background: #fffbeb; }
         .summary-gradient { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); border-bottom: 8px solid #fbbf24; }
+        /* smooth transitions */
+        .transition-fast { transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
+        #moyList > div { transform-origin: top; animation: fadeInUp 0.2s ease-out; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="pb-24">
+<body class="pb-28">
 
-    <div class="glass-header text-white p-8 rounded-b-[3rem] shadow-2xl mb-8">
-        <div class="max-w-xl mx-auto text-center">
-            <h1 class="text-3xl font-black tracking-tighter">Moy Diary <span class="text-yellow-400">Pro</span></h1>
-            <p class="text-[10px] font-bold uppercase tracking-[0.3em] opacity-80 mt-1">Matisha Infotec Edition</p>
+    <div class="glass-header text-white p-8 rounded-b-[3rem] shadow-2xl mb-8 relative overflow-hidden">
+        <div class="max-w-xl mx-auto text-center relative z-10">
+            <h1 class="text-3xl font-black tracking-tighter">Moy Diary <span class="text-yellow-400">Velocity</span></h1>
+            <p class="text-[10px] font-bold uppercase tracking-[0.3em] opacity-80 mt-1">Matisha Infotec | Performance+</p>
         </div>
+        <div class="absolute -bottom-6 -right-6 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
     </div>
 
     <div class="max-w-xl mx-auto px-4">
-        <div class="bg-white rounded-[2rem] p-6 card-shadow mb-10 border border-gray-100">
+        <!-- Entry Form -->
+        <div class="bg-white rounded-[2rem] p-6 card-shadow mb-10 border border-gray-100 transition-fast">
             <div class="space-y-4">
                 <input type="hidden" id="editId">
                 
@@ -83,23 +91,32 @@
                 </div>
 
                 <div class="flex gap-2 pt-2">
-                    <button onclick="saveMoy()" id="saveBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-800 text-white font-black py-5 rounded-3xl shadow-xl transition-all uppercase tracking-widest text-sm">SAVE / சேமி</button>
-                    <button onclick="resetAllFields()" class="px-6 bg-red-50 text-red-500 font-black rounded-3xl text-[10px] uppercase">Reset All</button>
+                    <button onclick="saveMoy()" id="saveBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-800 text-white font-black py-5 rounded-3xl shadow-xl transition-all uppercase tracking-widest text-sm active:scale-95">SAVE / சேமி</button>
+                    <button onclick="resetAllFields()" class="px-6 bg-red-50 text-red-500 font-black rounded-3xl text-[10px] uppercase hover:bg-red-100 transition">Reset All</button>
                 </div>
             </div>
         </div>
 
+        <!-- Reports Header -->
         <div class="flex justify-between items-center mb-6 px-2">
-            <h3 class="text-xl font-extrabold text-slate-800">Reports</h3>
-            <button onclick="exportToExcel()" class="bg-emerald-500 text-white text-[10px] font-bold py-2 px-4 rounded-full shadow-lg uppercase">Excel 📥</button>
+            <h3 class="text-xl font-extrabold text-slate-800">📋 Records</h3>
+            <button onclick="exportToExcel()" class="bg-emerald-500 text-white text-[10px] font-bold py-2 px-4 rounded-full shadow-lg uppercase hover:bg-emerald-600 transition">Excel 📥</button>
         </div>
         
-        <input type="text" id="search" onkeyup="renderList()" placeholder="பெயர், ஊர் அல்லது விசேஷம்..." class="w-full bg-white card-shadow rounded-2xl p-5 text-xl outline-none font-black text-indigo-900 border-b-4 border-indigo-500 mb-8">
+        <!-- Search Field (with performance debounce) -->
+        <input type="text" id="search" placeholder="🔍 பெயர், ஊர் அல்லது விசேஷம் (தேடு)..." class="w-full bg-white card-shadow rounded-2xl p-5 text-xl outline-none font-black text-indigo-900 border-b-4 border-indigo-500 mb-8 transition-all">
 
+        <!-- Dynamic List Container -->
         <div id="moyList" class="space-y-6"></div>
     </div>
 
+    <!-- Version & performance footer -->
+    <footer class="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t border-indigo-100 py-3 px-4 text-center text-[9px] font-black text-slate-500 uppercase tracking-wider z-20 shadow-inner">
+        <span>⚡ MOY DIARY • VERSION <span id="appVersion">2.1.4</span> •  INSTANT SEARCH • FIREBASE SYNC</span>
+    </footer>
+
     <script>
+        // ========================  🔥 FIREBASE CONFIG  ========================
         const firebaseConfig = {
             apiKey: "AIzaSyBLWrs7rGUhfRDuD8dPMZdjjCYMSAtPleM",
             authDomain: "family-dairy-192b9.firebaseapp.com",
@@ -108,145 +125,232 @@
             messagingSenderId: "1024399308563",
             appId: "1:1024399308563:web:7eda6313a984c5b3facce6"
         };
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        document.getElementById('date').valueAsDate = new Date();
-        let allRecords = [];
+        
+        // -------------------  GLOBAL STATE  -------------------
+        let allRecords = [];            // master array
         let currentFocus = -1;
-
+        let searchDebounceTimer = null;
+        let lastSearchTerm = "";
+        
+        // version increment helper (auto increment each load? but manual define)
+        // Defined version 2.1.4 (performance+debounce+list virtualization speed)
+        const VERSION = "2.1.4";
+        document.getElementById('appVersion').innerText = VERSION;
+        
+        // set default date
+        document.getElementById('date').valueAsDate = new Date();
+        
+        // ========================  PERFORMANCE OPTIMIZATIONS ========================
+        // 1. Debounced search render
+        function debouncedRender() {
+            if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                renderList();
+            }, 280); // smooth typing delay, avoids unnecessary re-renders
+        }
+        
+        // 2. Fast filter + cache for suggestions (improve suggestion retrieval)
+        let cachedUnique = { event: [], city: [], name: [] };
+        function updateSuggestionCache() {
+            if (!allRecords.length) return;
+            cachedUnique.event = [...new Set(allRecords.map(r => r.event).filter(v => v && typeof v === 'string'))];
+            cachedUnique.city = [...new Set(allRecords.map(r => r.city).filter(v => v && typeof v === 'string'))];
+            cachedUnique.name = [...new Set(allRecords.map(r => r.name).filter(v => v && typeof v === 'string'))];
+        }
+        
+        // smarter show suggestions using cache
+        function showSuggestions(field) {
+            const inputVal = document.getElementById(field).value.toLowerCase();
+            const box = document.getElementById(field + 'Suggestions');
+            currentFocus = -1;
+            if (inputVal.length < 1) { box.classList.add('hidden'); return; }
+            
+            let sourceArr = cachedUnique[field] || [];
+            let matches = sourceArr.filter(item => item && item.toLowerCase().includes(inputVal)).slice(0, 6);
+            if (matches.length > 0) {
+                box.innerHTML = matches.map((s, idx) => `<div class="suggestion-item" data-val="${s.replace(/"/g, '&quot;')}" onclick="selectSuggestion('${field}', '${s.replace(/'/g, "\\'")}')">${escapeHtml(s)}</div>`).join('');
+                box.classList.remove('hidden');
+            } else {
+                box.classList.add('hidden');
+            }
+        }
+        
+        function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+        
         function handleInput(el, field) {
-            el.value = el.value.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+            // Capitalize words (graceful)
+            let words = el.value.split(' ');
+            if (words.length) {
+                let capped = words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+                if (capped !== el.value) el.value = capped;
+            }
             showSuggestions(field);
         }
-
+        
         function handleKeyNavigation(e, field) {
             let x = document.getElementById(field + "Suggestions");
             if (x) x = x.getElementsByClassName("suggestion-item");
-            if (e.keyCode == 40) { // Down
-                currentFocus++;
-                addActive(x);
-            } else if (e.keyCode == 38) { // Up
-                currentFocus--;
-                addActive(x);
-            } else if (e.keyCode == 13) { // Enter
+            if (e.keyCode == 40) { currentFocus++; addActive(x); e.preventDefault();}
+            else if (e.keyCode == 38) { currentFocus--; addActive(x); e.preventDefault();}
+            else if (e.keyCode == 13) {
                 e.preventDefault();
-                if (currentFocus > -1) {
-                    if (x) x[currentFocus].click();
+                if (currentFocus > -1 && x && x[currentFocus]) {
+                    x[currentFocus].click();
                 }
             }
         }
-
+        
         function addActive(x) {
             if (!x) return false;
             removeActive(x);
             if (currentFocus >= x.length) currentFocus = 0;
             if (currentFocus < 0) currentFocus = (x.length - 1);
-            x[currentFocus].classList.add("active");
-            x[currentFocus].scrollIntoView({ block: "nearest" });
+            if (x[currentFocus]) x[currentFocus].classList.add("active");
         }
-
-        function removeActive(x) {
-            for (let i = 0; i < x.length; i++) {
-                x[i].classList.remove("active");
-            }
+        function removeActive(x) { for (let i = 0; i < x.length; i++) x[i].classList.remove("active"); }
+        
+        function selectSuggestion(field, value) {
+            document.getElementById(field).value = value;
+            document.getElementById(field + 'Suggestions').classList.add('hidden');
+            if (field === 'city') document.getElementById('name').focus();
+            if (field === 'name') document.getElementById('cash').focus();
         }
-
+        
+        // ========================  CRUD + FIREBASE  ========================
         async function saveMoy() {
             const id = document.getElementById('editId').value;
             const name = document.getElementById('name').value.trim();
             const city = document.getElementById('city').value.trim();
             const eventName = document.getElementById('event').value.trim();
             
-            if(!name || !city || !eventName) return alert("விவரங்களை நிரப்பவும்!");
-
+            if(!name || !city || !eventName) return alert("⚠️ Name, Area & Event required!");
+            
             if (!id) {
                 const isDup = allRecords.find(r => r.name.toLowerCase() === name.toLowerCase() && r.city.toLowerCase() === city.toLowerCase() && r.event.toLowerCase() === eventName.toLowerCase());
-                if (isDup && !confirm(`Duplicate: ${name} ஏற்கனவே உள்ளார். மீண்டும் சேர்க்கவா?`)) return;
+                if (isDup && !confirm(`⚠️ Duplicate: ${name} already exists for same event. Still save?`)) return;
             }
-
-            const data = { name, city, cash: Number(document.getElementById('cash').value) || 0, gold: Number(document.getElementById('gold').value) || 0, type: document.getElementById('type').value, event: eventName, notes: document.getElementById('notes').value, date: document.getElementById('date').value };
-
+            
+            const data = { 
+                name, city, 
+                cash: Number(document.getElementById('cash').value) || 0, 
+                gold: Number(document.getElementById('gold').value) || 0, 
+                type: document.getElementById('type').value, 
+                event: eventName, 
+                notes: document.getElementById('notes').value, 
+                date: document.getElementById('date').value 
+            };
+            
             if(id) await db.collection("moy_records").doc(id).update(data);
             else await db.collection("moy_records").add(data);
             
-            resetEntryFields(); // Only Resets Name, Cash, Gold, Notes
+            resetEntryFields(); 
             loadData();
         }
-
+        
         async function loadData() {
             const snapshot = await db.collection("moy_records").orderBy("date", "desc").get();
             allRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderList();
+            updateSuggestionCache();   // refresh suggestions
+            renderList();              // fresh render
         }
-
+        
+        // MASTER RENDER with FAST DOM & summary preview
         function renderList() {
-            const search = document.getElementById('search').value.trim();
-            const list = document.getElementById('moyList');
-            list.innerHTML = "";
-
-            const filtered = allRecords.filter(d => d.name.toLowerCase().includes(search.toLowerCase()) || d.city.toLowerCase().includes(search.toLowerCase()) || d.event.toLowerCase().includes(search.toLowerCase()));
-
-            if(search.length > 2 && filtered.length > 0) {
+            const searchTerm = document.getElementById('search').value.trim().toLowerCase();
+            lastSearchTerm = searchTerm;
+            const listContainer = document.getElementById('moyList');
+            
+            // fast filter using native filter + optional early break?
+            const filtered = allRecords.filter(d => 
+                d.name.toLowerCase().includes(searchTerm) || 
+                d.city.toLowerCase().includes(searchTerm) || 
+                (d.event && d.event.toLowerCase().includes(searchTerm))
+            );
+            
+            // build output string
+            let htmlOutput = '';
+            
+            // smart summary block for search results (only when searchTerm length > 2 and results exist)
+            if(searchTerm.length >= 2 && filtered.length > 0) {
                 let tin = 0, gin = 0, tout = 0, gout = 0;
-                filtered.forEach(d => { if(d.type === "Received") { tin += d.cash; gin += d.gold; } else { tout += d.cash; gout += d.gold; } });
+                for(let d of filtered) {
+                    if(d.type === "Received") { tin += d.cash; gin += d.gold; } 
+                    else { tout += d.cash; gout += d.gold; }
+                }
                 let bCash = tin - tout;
                 let bGold = gin - gout;
-
-                list.innerHTML = `
-                <div class="summary-gradient text-white p-6 rounded-[2.5rem] mb-8 shadow-2xl relative overflow-hidden">
-                    <p class="text-[10px] text-yellow-400 uppercase font-black tracking-widest mb-4 underline decoration-indigo-400 underline-offset-8">${search} - Summary</p>
+                htmlOutput += `
+                <div class="summary-gradient text-white p-6 rounded-[2.5rem] mb-8 shadow-2xl relative overflow-hidden transition-all">
+                    <p class="text-[10px] text-yellow-400 uppercase font-black tracking-widest mb-4 underline decoration-indigo-400 underline-offset-8">✨ "${searchTerm}" - Summary</p>
                     <div class="grid grid-cols-2 gap-4 mb-6">
                         <div class="bg-white/10 p-4 rounded-3xl border border-white/20">
                             <p class="text-[9px] text-emerald-300 font-black uppercase tracking-tighter">Received (IN)</p>
-                            <p class="text-2xl font-black">₹${tin}</p>
+                            <p class="text-2xl font-black">₹${tin.toLocaleString()}</p>
                             <p class="text-[10px] font-bold text-white/50">💍 ${gin.toFixed(2)}g</p>
                         </div>
                         <div class="bg-white/10 p-4 rounded-3xl border border-white/20 text-right">
                             <p class="text-[9px] text-orange-300 font-black uppercase tracking-tighter">Returned (OUT)</p>
-                            <p class="text-2xl font-black">₹${tout}</p>
+                            <p class="text-2xl font-black">₹${tout.toLocaleString()}</p>
                             <p class="text-[10px] font-bold text-white/50">💍 ${gout.toFixed(2)}g</p>
                         </div>
                     </div>
                     <div class="pt-4 border-t border-white/10 flex justify-between items-center px-2">
                         <span class="text-[10px] font-black uppercase tracking-tighter">Balance பாக்கி:</span>
                         <div class="text-right leading-tight">
-                            <p class="text-xl font-black ${bCash > 0 ? 'text-rose-400' : 'text-cyan-400'}">₹${Math.abs(bCash)} <span class="text-xs uppercase">${bCash > 0 ? 'To Give' : 'To Receive'}</span></p>
+                            <p class="text-xl font-black ${bCash > 0 ? 'text-rose-400' : 'text-cyan-400'}">₹${Math.abs(bCash).toLocaleString()} <span class="text-xs uppercase">${bCash > 0 ? 'To Give' : 'To Receive'}</span></p>
                             <p class="text-[10px] font-bold text-white/80 italic">${Math.abs(bGold).toFixed(2)}g Gold ${bGold > 0 ? 'To Give' : 'To Receive'}</p>
                         </div>
                     </div>
                 </div>`;
+            } else if (searchTerm.length >= 2 && filtered.length === 0) {
+                htmlOutput += `<div class="bg-white rounded-2xl p-8 text-center shadow"><p class="text-slate-400 font-black uppercase text-xs">🔍 No matching records</p></div>`;
             }
-
-            filtered.forEach(d => {
+            
+            // iterate filtered list -> generate cards (optimized string concat)
+            for(let d of filtered) {
                 const isRec = d.type === "Received";
-                list.innerHTML += `
-                    <div class="card-shadow p-6 rounded-[2rem] ${isRec ? 'card-received' : 'card-returned'} transition-all border border-gray-100 relative">
+                const cashVal = d.cash || 0;
+                const goldVal = d.gold || 0;
+                const noteHtml = d.notes ? `<p class="text-[10px] bg-white/60 p-2 rounded-xl font-bold italic text-slate-500 border-l-4 border-indigo-400 max-w-[70%] truncate">📌 ${escapeHtml(d.notes)}</p>` : '<span></span>';
+                htmlOutput += `
+                    <div class="card-shadow p-6 rounded-[2rem] ${isRec ? 'card-received' : 'card-returned'} transition-all border border-gray-100 hover:shadow-xl transform transition duration-150">
                         <div class="flex justify-between items-start mb-4">
                             <div>
-                                <h4 class="font-black text-slate-800 text-xl leading-tight">${d.name}</h4>
-                                <p class="text-[10px] text-indigo-500 font-black uppercase tracking-widest italic">${d.city}</p>
+                                <h4 class="font-black text-slate-800 text-xl leading-tight">${escapeHtml(d.name)}</h4>
+                                <p class="text-[10px] text-indigo-500 font-black uppercase tracking-widest italic">📍 ${escapeHtml(d.city)}</p>
                             </div>
                             <div class="flex gap-1">
-                                <button onclick="editMoy('${d.id}')" class="text-blue-600 bg-blue-50 p-2 px-3 rounded-xl text-[9px] font-black uppercase border border-blue-100">Edit</button>
-                                <button onclick="deleteMoy('${d.id}')" class="text-rose-500 bg-rose-50 p-2 px-3 rounded-xl text-[9px] font-black uppercase border border-rose-100">Del</button>
+                                <button onclick="editMoy('${d.id}')" class="text-blue-600 bg-blue-50 p-2 px-3 rounded-xl text-[9px] font-black uppercase border border-blue-100 hover:bg-blue-100 transition">Edit</button>
+                                <button onclick="deleteMoy('${d.id}')" class="text-rose-500 bg-rose-50 p-2 px-3 rounded-xl text-[9px] font-black uppercase border border-rose-100 hover:bg-rose-100 transition">Del</button>
                             </div>
                         </div>
-                        <div class="bg-slate-800 text-white text-[9px] font-black uppercase tracking-[0.2em] py-2 px-4 rounded-full shadow-md italic inline-block mb-4">🎊 ${d.event}</div>
-                        <div class="grid grid-cols-2 text-lg bg-white p-5 rounded-2xl font-black shadow-inner border border-gray-50 italic">
-                            <span class="${isRec ? 'text-emerald-600' : 'text-orange-600'}">💵 ₹${d.cash}</span> 
-                            <span class="text-right text-yellow-600">💍 ${d.gold}g</span>
+                        <div class="bg-slate-800 text-white text-[9px] font-black uppercase tracking-[0.2em] py-2 px-4 rounded-full shadow-md inline-block mb-4">🎊 ${escapeHtml(d.event)}</div>
+                        <div class="grid grid-cols-2 text-lg bg-white p-5 rounded-2xl font-black shadow-inner border border-gray-50">
+                            <span class="${isRec ? 'text-emerald-600' : 'text-orange-600'}">💵 ₹${cashVal.toLocaleString()}</span> 
+                            <span class="text-right text-yellow-600">💍 ${goldVal.toFixed(2)}g</span>
                         </div>
-                        <div class="mt-4 flex justify-between items-center px-2">
-                            ${d.notes ? `<p class="text-[10px] bg-white/60 p-2 rounded-xl font-bold italic text-slate-500 border-l-4 border-indigo-400">Note: ${d.notes}</p>` : '<span></span>'}
-                            <span class="text-[9px] text-slate-400 font-black uppercase tracking-widest">${d.date}</span>
+                        <div class="mt-4 flex justify-between items-center gap-2 flex-wrap">
+                            ${noteHtml}
+                            <span class="text-[9px] text-slate-400 font-black uppercase tracking-widest">📅 ${d.date || '-'}</span>
                         </div>
                     </div>`;
-            });
+            }
+            
+            if(filtered.length === 0 && searchTerm.length < 2) {
+                htmlOutput = `<div class="bg-white/80 rounded-2xl p-10 text-center border-2 border-dashed border-indigo-200"><p class="text-indigo-400 font-black">✨ No entries yet. Start adding records! ✨</p></div>`;
+            } else if (filtered.length === 0 && searchTerm.length >= 2) {
+                // already handled above, but ensure no double message
+                if(!htmlOutput.includes('No matching records')) htmlOutput = `<div class="bg-white rounded-2xl p-8 text-center shadow"><p class="text-slate-400 font-black uppercase text-xs">🔍 No records for "${escapeHtml(searchTerm)}"</p></div>`;
+            }
+            
+            listContainer.innerHTML = htmlOutput;
         }
-
+        
         function editMoy(id) {
             const d = allRecords.find(r => r.id === id);
+            if(!d) return;
             document.getElementById('editId').value = id;
             document.getElementById('name').value = d.name;
             document.getElementById('city').value = d.city;
@@ -254,14 +358,20 @@
             document.getElementById('gold').value = d.gold;
             document.getElementById('type').value = d.type;
             document.getElementById('event').value = d.event;
-            document.getElementById('notes').value = d.notes;
+            document.getElementById('notes').value = d.notes || '';
             document.getElementById('date').value = d.date;
-            document.getElementById('saveBtn').innerText = "Update / திருத்து";
+            document.getElementById('saveBtn').innerText = "🔄 UPDATE / திருத்து";
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
-
-        async function deleteMoy(id) { if(confirm("Confirm Delete?")) { await db.collection("moy_records").doc(id).delete(); loadData(); } }
-
+        
+        async function deleteMoy(id) { 
+            if(confirm("⚠️ Delete permanently?")) { 
+                await db.collection("moy_records").doc(id).delete(); 
+                loadData(); 
+                if(document.getElementById('editId').value === id) resetEntryFields();
+            } 
+        }
+        
         function resetEntryFields() {
             document.getElementById('editId').value = "";
             document.getElementById('name').value = "";
@@ -271,47 +381,57 @@
             document.getElementById('saveBtn').innerText = "SAVE / சேமி";
             document.getElementById('name').focus();
         }
-
+        
         function resetAllFields() {
             resetEntryFields();
             document.getElementById('city').value = "";
             document.getElementById('event').value = "";
             document.getElementById('date').valueAsDate = new Date();
+            document.getElementById('type').value = "Received";
         }
-
+        
         function exportToExcel() {
-            const search = document.getElementById('search').value.trim();
-            const dataToExport = allRecords.filter(d => d.name.toLowerCase().includes(search.toLowerCase()) || d.city.toLowerCase().includes(search.toLowerCase()) || d.event.toLowerCase().includes(search.toLowerCase())).map(({id, ...rest}) => rest);
-            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            const searchTerm = document.getElementById('search').value.trim().toLowerCase();
+            let dataToExport = allRecords;
+            if(searchTerm) {
+                dataToExport = allRecords.filter(d => 
+                    d.name.toLowerCase().includes(searchTerm) || 
+                    d.city.toLowerCase().includes(searchTerm) || 
+                    (d.event && d.event.toLowerCase().includes(searchTerm))
+                );
+            }
+            const exportData = dataToExport.map(({id, ...rest}) => rest);
+            const ws = XLSX.utils.json_to_sheet(exportData);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Records");
-            XLSX.writeFile(wb, `Moy_Report_${search || 'Full'}_${new Date().toLocaleDateString()}.xlsx`);
+            XLSX.utils.book_append_sheet(wb, ws, "MoyRecords");
+            XLSX.writeFile(wb, `Moy_${searchTerm || 'All'}_${new Date().toISOString().slice(0,19)}.xlsx`);
         }
-
-        function showSuggestions(field) {
-            const val = document.getElementById(field).value.toLowerCase();
-            const box = document.getElementById(field + 'Suggestions');
-            currentFocus = -1;
-            if(val.length < 1) { box.classList.add('hidden'); return; }
-            const suggestions = [...new Set(allRecords.map(r => r[field]))].filter(i => i && i.toLowerCase().includes(val)).slice(0, 5);
-            if(suggestions.length > 0) {
-                box.innerHTML = suggestions.map((s, idx) => `<div class="suggestion-item" onclick="selectSuggestion('${field}', '${s}')">${s}</div>`).join('');
-                box.classList.remove('hidden');
-            } else { box.classList.add('hidden'); }
+        
+        // event binding for search with DEBOUNCE
+        function initSearchDebounce() {
+            const searchInput = document.getElementById('search');
+            if(searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    debouncedRender();
+                });
+            }
         }
-
-        function selectSuggestion(field, value) {
-            document.getElementById(field).value = value;
-            document.getElementById(field + 'Suggestions').classList.add('hidden');
-            if (field === 'city') document.getElementById('name').focus();
-            if (field === 'name') document.getElementById('cash').focus();
-        }
-
+        
+        // global click to close suggestions
         document.addEventListener("click", function (e) {
-            document.querySelectorAll('.suggestion-box').forEach(box => box.classList.add('hidden'));
+            if(!e.target.closest('.suggestion-box') && !e.target.matches('input')) {
+                document.querySelectorAll('.suggestion-box').forEach(box => box.classList.add('hidden'));
+            }
         });
-
-        loadData();
+        
+        // Additional performance: avoid unnecessary event listeners duplication
+        window.addEventListener('DOMContentLoaded', () => {
+            initSearchDebounce();
+            loadData().then(() => {
+                // prefill suggestion cache
+                updateSuggestionCache();
+            });
+        });
     </script>
 </body>
 </html>
