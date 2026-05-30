@@ -38,7 +38,7 @@
     <div class="glass-header text-white p-6 rounded-b-[3rem] shadow-2xl mb-4">
         <div class="max-w-xl mx-auto text-center">
             <h1 class="text-2xl md:text-3xl font-black tracking-tighter">Moy + <span class="text-yellow-400">Multi‑Family</span> Diary</h1>
-            <p class="text-[9px] font-bold uppercase tracking-[0.3em] opacity-80 mt-1">Moy unchanged | Auto‑detects all family collections</p>
+            <p class="text-[9px] font-bold uppercase tracking-[0.3em] opacity-80 mt-1">Moy unchanged | Add existing families manually</p>
         </div>
     </div>
 
@@ -52,7 +52,6 @@
 
     <!-- ======================= MOY DIARY (UNCHANGED) ======================= -->
     <div id="moySection" class="max-w-xl mx-auto px-4">
-        <!-- Original Moy form (same as original) -->
         <div class="bg-white rounded-[2rem] p-6 card-shadow mb-10 border border-gray-100">
             <div class="space-y-4">
                 <input type="hidden" id="editId">
@@ -109,7 +108,7 @@
         <div id="moyList" class="space-y-6"></div>
     </div>
 
-    <!-- ======================= FAMILY DIARY (AUTO-DETECTS ALL contacts_* COLLECTIONS) ======================= -->
+    <!-- ======================= FAMILY DIARY (RELIABLE VERSION) ======================= -->
     <div id="familySection" class="max-w-xl mx-auto px-4 hidden">
         <!-- Family Selector with edit icon -->
         <div class="bg-white p-4 rounded-2xl shadow-md mb-6 border-l-8 border-blue-500">
@@ -117,13 +116,14 @@
                 <label class="text-xs font-black text-slate-500 uppercase tracking-wider">👨‍👩‍👧‍👦 Family Group</label>
                 <div class="flex gap-2">
                     <button onclick="openCreateFamilyModal()" class="bg-blue-500 text-white px-3 py-1 rounded-full text-[10px] font-bold shadow">+ New Family</button>
+                    <button onclick="promptAddExistingFamily()" class="bg-purple-500 text-white px-3 py-1 rounded-full text-[10px] font-bold shadow">📂 Add Existing</button>
                     <button onclick="editCurrentFamilyName()" class="bg-amber-500 text-white px-3 py-1 rounded-full text-[10px] font-bold shadow">✏️ Edit Name</button>
                 </div>
             </div>
             <select id="familyCollectionSelector" class="w-full p-3 bg-slate-50 border-2 border-blue-200 rounded-xl font-bold text-slate-700">
                 <option value="contacts">🏠 Default Family</option>
             </select>
-            <p class="text-[9px] text-slate-400 mt-2 italic">All existing family groups are automatically detected.</p>
+            <p class="text-[9px] text-slate-400 mt-2 italic">Use "Add Existing" to import old family collections (e.g., contacts_ranjith_relatives).</p>
         </div>
 
         <!-- Common Search Toggle -->
@@ -187,7 +187,7 @@
     <datalist id="famPlaceSuggestions"></datalist>
 
     <footer class="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t border-indigo-100 py-3 px-4 text-center text-[9px] font-black text-slate-500 uppercase tracking-wider z-20">
-        <span>⚡ Moy Diary (original) + Multi‑Family • Auto‑detects all families • v2.9</span>
+        <span>⚡ Moy Diary (original) + Multi‑Family • v3.0 (manual add existing families)</span>
     </footer>
 
     <script>
@@ -331,7 +331,7 @@
             } else box.classList.add('hidden');
         }
         window.selectMoySuggestion = function(field, val) { document.getElementById(field).value = val; document.getElementById(field + 'Suggestions').classList.add('hidden'); };
-        function handleMoyKeyNav(e, field) { /* arrow handling optional */ }
+        function handleMoyKeyNav(e, field) { /* optional */ }
 
         window.exportMoyToExcel = function() {
             const term = document.getElementById('moySearch').value.trim().toLowerCase();
@@ -343,7 +343,7 @@
             XLSX.writeFile(wb, `Moy_${term||'All'}.xlsx`);
         };
 
-        // ======================== FAMILY DIARY (AUTO-DETECTS ALL CONTACTS_* COLLECTIONS) ========================
+        // ======================== FAMILY DIARY (RELIABLE, USING family_meta) ========================
         let currentCollectionName = "contacts";
         let allFamilyContacts = [];
         let familyUnsubscribe = null;
@@ -352,38 +352,29 @@
         const globalSearchToggle = document.getElementById('globalSearchToggle');
         let isGlobalSearch = false;
 
-        // Load all existing collections that start with "contacts" and ensure metadata
-        async function loadAllFamilyCollections() {
-            const collections = await db.listCollections();
-            const contactCollections = collections.filter(col => col.id.startsWith("contacts_") || col.id === "contacts");
-            for (let col of contactCollections) {
-                const colName = col.id;
-                // Check if metadata exists
-                const metaDoc = await db.collection("family_meta").doc(colName).get();
-                if (!metaDoc.exists) {
-                    // Create default display name
-                    let displayName = colName === "contacts" ? "Default Family" : colName.replace("contacts_", "").replace(/_/g, " ");
-                    displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
-                    await db.collection("family_meta").doc(colName).set({ displayName });
-                }
-            }
-            await loadFamilyMeta(); // reload metadata
-            populateFamilyDropdown();
-        }
-
+        // Load all families from family_meta collection
         async function loadFamilyMeta() {
-            const metaSnapshot = await db.collection("family_meta").get();
+            const snapshot = await db.collection("family_meta").get();
             familyMeta = {};
-            metaSnapshot.forEach(doc => {
-                familyMeta[doc.id] = doc.data().displayName;
+            snapshot.forEach(doc => {
+                // Only consider documents that are valid collection names (start with "contacts" or exactly "contacts")
+                let colName = doc.id;
+                if (colName === "contacts" || colName.startsWith("contacts_")) {
+                    familyMeta[colName] = doc.data().displayName || colName;
+                }
             });
-            if (!familyMeta['contacts']) familyMeta['contacts'] = "Default Family";
+            // Ensure default family exists
+            if (!familyMeta["contacts"]) {
+                familyMeta["contacts"] = "Default Family";
+                await db.collection("family_meta").doc("contacts").set({ displayName: "Default Family" });
+            }
+            populateDropdown();
         }
 
-        function populateFamilyDropdown() {
-            // Clear existing options except possibly the first one
+        function populateDropdown() {
+            // Clear existing options
             while (collectionSelector.options.length > 0) collectionSelector.remove(0);
-            // Add all families from familyMeta
+            // Add sorted families
             const sorted = Object.keys(familyMeta).sort();
             for (let colName of sorted) {
                 const option = document.createElement('option');
@@ -402,14 +393,6 @@
             }
         }
 
-        function updateSelectorDisplay() {
-            for(let i = 0; i < collectionSelector.options.length; i++) {
-                let opt = collectionSelector.options[i];
-                let val = opt.value;
-                if (familyMeta[val]) opt.textContent = familyMeta[val];
-            }
-        }
-
         function getFamilyCollection(collectionName = currentCollectionName) {
             return db.collection(collectionName);
         }
@@ -425,17 +408,13 @@
             }
             const col = getFamilyCollection();
             familyUnsubscribe = col.orderBy("name").onSnapshot(snapshot => {
-                allFamilyContacts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), _familyKey: currentCollectionName, _familyDisplay: getDisplayName(currentCollectionName) }));
+                allFamilyContacts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), _familyKey: currentCollectionName, _familyDisplay: familyMeta[currentCollectionName] || currentCollectionName }));
                 updateFamilySuggestions();
                 applyFamilySearch();
             }, error => {
                 console.error("Family load error:", error);
                 document.getElementById('familyListContainer').innerHTML = '<div class="text-center py-20 text-red-400 italic">Error loading data.</div>';
             });
-        }
-
-        function getDisplayName(collectionKey) {
-            return familyMeta[collectionKey] || collectionKey.replace('contacts_', '').replace(/_/g, ' ') || "Unknown";
         }
 
         async function performGlobalSearch() {
@@ -445,7 +424,7 @@
             for (let collName of collections) {
                 try {
                     const snapshot = await db.collection(collName).limit(300).get();
-                    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), _familyKey: collName, _familyDisplay: getDisplayName(collName) }));
+                    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), _familyKey: collName, _familyDisplay: familyMeta[collName] || collName }));
                     allResults.push(...docs);
                 } catch(e) { console.warn(e); }
             }
@@ -608,16 +587,43 @@
 
         window.editCurrentFamilyName = async function() {
             const currentKey = currentCollectionName;
-            let currentDisplay = getDisplayName(currentKey);
+            let currentDisplay = familyMeta[currentKey] || currentKey;
             let newName = prompt("Enter new display name for this family:", currentDisplay);
             if (newName && newName.trim()) {
                 newName = newName.trim();
                 await db.collection("family_meta").doc(currentKey).set({ displayName: newName });
                 familyMeta[currentKey] = newName;
-                updateSelectorDisplay();
+                populateDropdown(); // refresh dropdown text
                 if (isGlobalSearch) await performGlobalSearch();
                 else loadFamilyData();
             }
+        };
+
+        // Prompt to add an existing collection (e.g., contacts_ranjith_relatives)
+        window.promptAddExistingFamily = async function() {
+            let collectionName = prompt("Enter the exact Firestore collection name (e.g., contacts_ranjith_relatives):");
+            if (!collectionName) return;
+            if (!collectionName.startsWith("contacts") && collectionName !== "contacts") {
+                alert("Collection name must start with 'contacts' or be exactly 'contacts'.");
+                return;
+            }
+            let displayName = prompt("Display name for this family:", collectionName.replace("contacts_", "").replace(/_/g, " "));
+            if (!displayName) displayName = collectionName;
+            // Check if already exists
+            if (familyMeta[collectionName]) {
+                alert("This family already exists in the list.");
+                return;
+            }
+            // Add to family_meta
+            await db.collection("family_meta").doc(collectionName).set({ displayName });
+            familyMeta[collectionName] = displayName;
+            populateDropdown();
+            // Optionally switch to this family
+            collectionSelector.value = collectionName;
+            currentCollectionName = collectionName;
+            localStorage.setItem('activeFamilyCollection', currentCollectionName);
+            loadFamilyData();
+            alert(`Family "${displayName}" added. You can now view and edit its contacts.`);
         };
 
         window.openCreateFamilyModal = function() {
@@ -632,21 +638,17 @@
             if(!newFamily) return alert("Please enter a family name");
             let collectionKey = "contacts_" + newFamily.toLowerCase().replace(/\s+/g, '_');
             if (familyMeta[collectionKey]) return alert("Family already exists!");
-            // Create empty collection by adding a dummy doc? Not needed. Just add metadata.
+            // Add to family_meta (collection will be created automatically when first contact added)
             await db.collection("family_meta").doc(collectionKey).set({ displayName: newFamily });
             familyMeta[collectionKey] = newFamily;
-            // Add to dropdown
-            let option = document.createElement('option');
-            option.value = collectionKey;
-            option.textContent = newFamily;
-            collectionSelector.appendChild(option);
+            populateDropdown();
             collectionSelector.value = collectionKey;
             currentCollectionName = collectionKey;
             localStorage.setItem('activeFamilyCollection', currentCollectionName);
             isGlobalSearch = false;
             globalSearchToggle.checked = false;
             closeCreateFamilyModal();
-            loadFamilyData(); // will now listen to the new collection
+            loadFamilyData(); // will listen to the new (empty) collection
         };
 
         globalSearchToggle.addEventListener('change', (e) => {
@@ -697,8 +699,8 @@
         document.getElementById('date').valueAsDate = new Date();
         loadMoyData();
 
-        // Initialize: load all family collections and then start data listening
-        loadAllFamilyCollections().then(() => {
+        // Initialize: load families from family_meta, then load data for current selection
+        loadFamilyMeta().then(() => {
             loadFamilyData();
         });
 
