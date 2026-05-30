@@ -25,9 +25,6 @@
         .summary-gradient { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); border-bottom: 8px solid #fbbf24; }
         .tab-active { background: white; color: #4f46e5; border-bottom: 3px solid #4f46e5; font-weight: 800; }
         .tab-inactive { background: transparent; color: #64748b; border-bottom: 3px solid transparent; }
-        .transition-fast { transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
-        #moyList > div, #familyListContainer > div { animation: fadeInUp 0.2s ease-out; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
         .toggle-switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 24px; }
@@ -55,7 +52,7 @@
 
     <!-- ======================= MOY DIARY (UNCHANGED) ======================= -->
     <div id="moySection" class="max-w-xl mx-auto px-4">
-        <!-- Original Moy form (same as before) -->
+        <!-- Original Moy form (same as original) -->
         <div class="bg-white rounded-[2rem] p-6 card-shadow mb-10 border border-gray-100">
             <div class="space-y-4">
                 <input type="hidden" id="editId">
@@ -112,7 +109,7 @@
         <div id="moyList" class="space-y-6"></div>
     </div>
 
-    <!-- ======================= FAMILY DIARY (ENHANCED) ======================= -->
+    <!-- ======================= FAMILY DIARY (FIXED) ======================= -->
     <div id="familySection" class="max-w-xl mx-auto px-4 hidden">
         <!-- Family Selector with edit icon -->
         <div class="bg-white p-4 rounded-2xl shadow-md mb-6 border-l-8 border-blue-500">
@@ -190,7 +187,7 @@
     <datalist id="famPlaceSuggestions"></datalist>
 
     <footer class="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t border-indigo-100 py-3 px-4 text-center text-[9px] font-black text-slate-500 uppercase tracking-wider z-20">
-        <span>⚡ Moy Diary (original) + Multi‑Family • Edit names • Common search • v2.7</span>
+        <span>⚡ Moy Diary (original) + Multi‑Family • v2.8 (fixed new family visibility)</span>
     </footer>
 
     <script>
@@ -346,7 +343,7 @@
             XLSX.writeFile(wb, `Moy_${term||'All'}.xlsx`);
         };
 
-        // ======================== FAMILY DIARY (MULTI-COLLECTION + EDIT NAMES + COMMON SEARCH) ========================
+        // ======================== FAMILY DIARY (FIXED) ========================
         let currentCollectionName = "contacts";
         let allFamilyContacts = [];
         let familyUnsubscribe = null;
@@ -362,7 +359,6 @@
             metaSnapshot.forEach(doc => {
                 familyMeta[doc.id] = doc.data().displayName;
             });
-            // Also set default for 'contacts' if not present
             if (!familyMeta['contacts']) familyMeta['contacts'] = "Default Family";
             updateSelectorDisplay();
         }
@@ -376,7 +372,6 @@
                 } else if (val === "contacts") {
                     opt.textContent = "Default Family";
                 } else {
-                    // extract from key
                     let name = val.replace('contacts_', '').replace(/_/g, ' ');
                     opt.textContent = name.charAt(0).toUpperCase() + name.slice(1);
                 }
@@ -389,10 +384,13 @@
         }
 
         // Load data from selected collection (or global search)
-        async function loadFamilyData() {
-            if (familyUnsubscribe) familyUnsubscribe();
+        function loadFamilyData() {
+            if (familyUnsubscribe) {
+                familyUnsubscribe();
+                familyUnsubscribe = null;
+            }
             if (isGlobalSearch) {
-                await performGlobalSearch();
+                performGlobalSearch();
                 return;
             }
             const col = getFamilyCollection();
@@ -412,19 +410,18 @@
 
         async function performGlobalSearch() {
             const searchTerm = document.getElementById('familySearch').value.toLowerCase();
-            // Get all family collection names
             const collections = [];
             for(let i = 0; i < collectionSelector.options.length; i++) {
                 collections.push(collectionSelector.options[i].value);
             }
-            // For each collection, fetch data (limit to 50 each for performance)
             let allResults = [];
             for (let collName of collections) {
-                const snapshot = await db.collection(collName).limit(200).get();
-                const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), _familyKey: collName, _familyDisplay: getDisplayName(collName) }));
-                allResults.push(...docs);
+                try {
+                    const snapshot = await db.collection(collName).limit(300).get();
+                    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), _familyKey: collName, _familyDisplay: getDisplayName(collName) }));
+                    allResults.push(...docs);
+                } catch(e) { console.warn(e); }
             }
-            // Filter by search term
             if (searchTerm) {
                 allResults = allResults.filter(c => 
                     (c.name?.toLowerCase() || "").includes(searchTerm) ||
@@ -537,6 +534,9 @@
                 document.getElementById('famPlace').value = ""; 
             }
             closeFamilyModal();
+            // Refresh view after save
+            if (isGlobalSearch) performGlobalSearch();
+            else loadFamilyData();
         };
 
         window.editFamilyContact = function(id, collectionName) {
@@ -545,8 +545,10 @@
                 collectionSelector.value = collectionName;
                 currentCollectionName = collectionName;
                 localStorage.setItem('activeFamilyCollection', currentCollectionName);
-                loadFamilyData(); // reload and then edit?
-                setTimeout(() => editFamilyContact(id, collectionName), 500);
+                isGlobalSearch = false;
+                globalSearchToggle.checked = false;
+                loadFamilyData();
+                setTimeout(() => editFamilyContact(id, collectionName), 300);
                 return;
             }
             const c = allFamilyContacts.find(x => x.id === id);
@@ -564,11 +566,19 @@
         window.deleteFamilyContact = async function(id, collectionName) {
             if(confirm("Delete this contact?")) {
                 await db.collection(collectionName).doc(id).delete();
+                if (isGlobalSearch) performGlobalSearch();
+                else loadFamilyData();
             }
         };
 
         window.exportFamilyToExcel = function() {
-            const ws = XLSX.utils.json_to_sheet(allFamilyContacts.map(({id, _familyKey, _familyDisplay, ...rest})=>rest));
+            let dataForExport = allFamilyContacts;
+            if (!isGlobalSearch) {
+                dataForExport = allFamilyContacts.map(({_familyKey, _familyDisplay, ...rest}) => rest);
+            } else {
+                dataForExport = allFamilyContacts.map(({_familyKey, _familyDisplay, ...rest}) => rest);
+            }
+            const ws = XLSX.utils.json_to_sheet(dataForExport);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "FamilyContacts");
             XLSX.writeFile(wb, `Family_${currentCollectionName}.xlsx`);
@@ -586,7 +596,6 @@
                 await db.collection("family_meta").doc(currentKey).set({ displayName: newName });
                 familyMeta[currentKey] = newName;
                 updateSelectorDisplay();
-                // Reload data to refresh display
                 if (isGlobalSearch) await performGlobalSearch();
                 else loadFamilyData();
             }
@@ -624,12 +633,11 @@
             // Store display name in Firestore
             await db.collection("family_meta").doc(collectionKey).set({ displayName: newFamily });
             familyMeta[collectionKey] = newFamily;
+            updateSelectorDisplay();
+            // Turn off global search and reload
+            isGlobalSearch = false;
+            globalSearchToggle.checked = false;
             closeCreateFamilyModal();
-            // Ensure global search toggle off
-            if (globalSearchToggle.checked) {
-                globalSearchToggle.checked = false;
-                isGlobalSearch = false;
-            }
             loadFamilyData();
         };
 
