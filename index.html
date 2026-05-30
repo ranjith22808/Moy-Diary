@@ -38,7 +38,7 @@
     <div class="glass-header text-white p-6 rounded-b-[3rem] shadow-2xl mb-4">
         <div class="max-w-xl mx-auto text-center">
             <h1 class="text-2xl md:text-3xl font-black tracking-tighter">Moy + <span class="text-yellow-400">Multi‑Family</span> Diary</h1>
-            <p class="text-[9px] font-bold uppercase tracking-[0.3em] opacity-80 mt-1">Moy unchanged | Add existing families manually</p>
+            <p class="text-[9px] font-bold uppercase tracking-[0.3em] opacity-80 mt-1">Moy unchanged | Auto +91 for contacts</p>
         </div>
     </div>
 
@@ -108,9 +108,8 @@
         <div id="moyList" class="space-y-6"></div>
     </div>
 
-    <!-- ======================= FAMILY DIARY (RELIABLE VERSION) ======================= -->
+    <!-- ======================= FAMILY DIARY (with automatic +91) ======================= -->
     <div id="familySection" class="max-w-xl mx-auto px-4 hidden">
-        <!-- Family Selector with edit icon -->
         <div class="bg-white p-4 rounded-2xl shadow-md mb-6 border-l-8 border-blue-500">
             <div class="flex justify-between items-center mb-2">
                 <label class="text-xs font-black text-slate-500 uppercase tracking-wider">👨‍👩‍👧‍👦 Family Group</label>
@@ -123,10 +122,9 @@
             <select id="familyCollectionSelector" class="w-full p-3 bg-slate-50 border-2 border-blue-200 rounded-xl font-bold text-slate-700">
                 <option value="contacts">🏠 Default Family</option>
             </select>
-            <p class="text-[9px] text-slate-400 mt-2 italic">Use "Add Existing" to import old family collections (e.g., contacts_ranjith_relatives).</p>
+            <p class="text-[9px] text-slate-400 mt-2 italic">Phone numbers are automatically saved with +91 prefix for WhatsApp.</p>
         </div>
 
-        <!-- Common Search Toggle -->
         <div class="flex items-center justify-between bg-white p-3 rounded-xl shadow-sm mb-4">
             <span class="text-sm font-bold text-slate-700">🌐 Search across ALL families</span>
             <label class="toggle-switch">
@@ -159,7 +157,7 @@
                     <input type="text" id="famFamily" list="famFamilySuggestions" placeholder="Family Name" class="w-1/2 border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
                     <input type="text" id="famSubFamily" list="famSubFamilySuggestions" placeholder="Sub Family" class="w-1/2 border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
                 </div>
-                <input type="tel" id="famPhone" placeholder="Phone Number" class="w-full border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
+                <input type="tel" id="famPhone" placeholder="Phone Number (10 digits, will get +91)" class="w-full border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
                 <input type="text" id="famPlace" list="famPlaceSuggestions" placeholder="Place / City" class="w-full border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
             </div>
             <p id="familySaveStatus" class="text-center text-green-600 mt-4 font-bold hidden">✅ Saved!</p>
@@ -187,7 +185,7 @@
     <datalist id="famPlaceSuggestions"></datalist>
 
     <footer class="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t border-indigo-100 py-3 px-4 text-center text-[9px] font-black text-slate-500 uppercase tracking-wider z-20">
-        <span>⚡ Moy Diary (original) + Multi‑Family • v3.0 (manual add existing families)</span>
+        <span>⚡ Moy Diary + Multi‑Family • Auto +91 for WhatsApp • v3.1</span>
     </footer>
 
     <script>
@@ -343,27 +341,61 @@
             XLSX.writeFile(wb, `Moy_${term||'All'}.xlsx`);
         };
 
-        // ======================== FAMILY DIARY (RELIABLE, USING family_meta) ========================
+        // ======================== FAMILY DIARY WITH +91 AUTO-PREFIX ========================
         let currentCollectionName = "contacts";
         let allFamilyContacts = [];
         let familyUnsubscribe = null;
-        let familyMeta = {}; // collectionName -> displayName
+        let familyMeta = {};
         const collectionSelector = document.getElementById('familyCollectionSelector');
         const globalSearchToggle = document.getElementById('globalSearchToggle');
         let isGlobalSearch = false;
 
-        // Load all families from family_meta collection
+        // Helper: normalize phone number to +91XXXXXXXXXX
+        function normalizePhone(phone) {
+            if (!phone) return "";
+            // Remove all non-digit characters
+            let digits = phone.replace(/\D/g, '');
+            if (digits.length === 0) return "";
+            // If it starts with 91 and length 12, add +
+            if (digits.startsWith("91") && digits.length === 12) {
+                return "+" + digits;
+            }
+            // If it starts with 0, remove leading zero and add +91
+            if (digits.startsWith("0")) {
+                digits = digits.substring(1);
+            }
+            // If exactly 10 digits, prepend +91
+            if (digits.length === 10) {
+                return "+91" + digits;
+            }
+            // If already has +91 at start (stored with +), keep as is
+            if (phone.startsWith("+")) {
+                return phone;
+            }
+            // Fallback: return original
+            return phone;
+        }
+
+        // Helper: get WhatsApp link using normalized number
+        function getWhatsAppLink(phone) {
+            let normalized = normalizePhone(phone);
+            // Remove any spaces or special chars for URL
+            let clean = normalized.replace(/\D/g, '');
+            if (clean.startsWith("91") && clean.length === 12) {
+                return `https://wa.me/${clean}`;
+            }
+            return `https://wa.me/${clean}`;
+        }
+
         async function loadFamilyMeta() {
             const snapshot = await db.collection("family_meta").get();
             familyMeta = {};
             snapshot.forEach(doc => {
-                // Only consider documents that are valid collection names (start with "contacts" or exactly "contacts")
                 let colName = doc.id;
                 if (colName === "contacts" || colName.startsWith("contacts_")) {
                     familyMeta[colName] = doc.data().displayName || colName;
                 }
             });
-            // Ensure default family exists
             if (!familyMeta["contacts"]) {
                 familyMeta["contacts"] = "Default Family";
                 await db.collection("family_meta").doc("contacts").set({ displayName: "Default Family" });
@@ -372,9 +404,7 @@
         }
 
         function populateDropdown() {
-            // Clear existing options
             while (collectionSelector.options.length > 0) collectionSelector.remove(0);
-            // Add sorted families
             const sorted = Object.keys(familyMeta).sort();
             for (let colName of sorted) {
                 const option = document.createElement('option');
@@ -382,7 +412,6 @@
                 option.textContent = familyMeta[colName];
                 collectionSelector.appendChild(option);
             }
-            // Restore previously selected family
             const saved = localStorage.getItem('activeFamilyCollection');
             if (saved && familyMeta[saved]) {
                 collectionSelector.value = saved;
@@ -398,10 +427,7 @@
         }
 
         function loadFamilyData() {
-            if (familyUnsubscribe) {
-                familyUnsubscribe();
-                familyUnsubscribe = null;
-            }
+            if (familyUnsubscribe) familyUnsubscribe();
             if (isGlobalSearch) {
                 performGlobalSearch();
                 return;
@@ -449,16 +475,17 @@
             }
             let html = '';
             data.forEach(c => {
-                const cleanPhone = (c.phone || "").replace(/\D/g, '');
+                const whatsappUrl = getWhatsAppLink(c.phone);
+                const displayPhone = c.phone || "";
                 html += `<div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 relative">
                     <div class="absolute top-2 right-2 text-[9px] font-black bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">${escapeHtml(c._familyDisplay)}</div>
                     <div class="flex justify-between items-start"><div><h3 class="font-bold text-xl">${escapeHtml(c.name)}</h3>
                     <div class="flex flex-wrap gap-2 mt-2"><span class="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded font-bold">${escapeHtml(c.family)}</span>
                     <span class="bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded">${escapeHtml(c.subFamily)}</span>
                     <span class="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded">📍 ${escapeHtml(c.place)}</span></div>
-                    <p class="text-lg font-bold mt-3">${c.phone}</p></div>
-                    <div class="flex flex-col gap-2"><a href="tel:${c.phone}" class="bg-green-500 p-3 rounded-full text-white shadow-lg text-center">📞</a>
-                    <a href="https://wa.me/${cleanPhone}" target="_blank" class="bg-emerald-600 p-3 rounded-full text-white shadow-lg text-center">💬</a>
+                    <p class="text-lg font-bold mt-3">${escapeHtml(displayPhone)}</p></div>
+                    <div class="flex flex-col gap-2"><a href="tel:${escapeHtml(displayPhone)}" class="bg-green-500 p-3 rounded-full text-white shadow-lg text-center">📞</a>
+                    <a href="${whatsappUrl}" target="_blank" class="bg-emerald-600 p-3 rounded-full text-white shadow-lg text-center">💬</a>
                     <button onclick="editFamilyContact('${c.id}', '${c._familyKey}')" class="text-blue-600 font-bold text-sm">Edit</button>
                     <button onclick="deleteFamilyContact('${c.id}', '${c._familyKey}')" class="text-red-400 text-xs">Remove</button></div></div></div>`;
             });
@@ -493,15 +520,16 @@
             }
             let html = '';
             data.forEach(c => {
-                const cleanPhone = (c.phone || "").replace(/\D/g, '');
+                const whatsappUrl = getWhatsAppLink(c.phone);
+                const displayPhone = c.phone || "";
                 html += `<div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
                     <div class="flex justify-between items-start"><div><h3 class="font-bold text-xl">${escapeHtml(c.name)}</h3>
                     <div class="flex flex-wrap gap-2 mt-2"><span class="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded font-bold">${escapeHtml(c.family)}</span>
                     <span class="bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded">${escapeHtml(c.subFamily)}</span>
                     <span class="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded">📍 ${escapeHtml(c.place)}</span></div>
-                    <p class="text-lg font-bold mt-3">${c.phone}</p></div>
-                    <div class="flex flex-col gap-2"><a href="tel:${c.phone}" class="bg-green-500 p-3 rounded-full text-white shadow-lg text-center">📞</a>
-                    <a href="https://wa.me/${cleanPhone}" target="_blank" class="bg-emerald-600 p-3 rounded-full text-white shadow-lg text-center">💬</a>
+                    <p class="text-lg font-bold mt-3">${escapeHtml(displayPhone)}</p></div>
+                    <div class="flex flex-col gap-2"><a href="tel:${escapeHtml(displayPhone)}" class="bg-green-500 p-3 rounded-full text-white shadow-lg text-center">📞</a>
+                    <a href="${whatsappUrl}" target="_blank" class="bg-emerald-600 p-3 rounded-full text-white shadow-lg text-center">💬</a>
                     <button onclick="editFamilyContact('${c.id}', '${currentCollectionName}')" class="text-blue-600 font-bold text-sm">Edit</button>
                     <button onclick="deleteFamilyContact('${c.id}', '${currentCollectionName}')" class="text-red-400 text-xs">Remove</button></div></div></div>`;
             });
@@ -518,11 +546,14 @@
 
         window.saveFamilyContact = async function() {
             const id = document.getElementById('familyEditId').value;
+            let rawPhone = document.getElementById('famPhone').value.trim();
+            // Normalize phone: add +91 if needed
+            const normalizedPhone = normalizePhone(rawPhone);
             const data = {
                 name: toTitleCase(document.getElementById('famName').value),
                 family: toTitleCase(document.getElementById('famFamily').value),
                 subFamily: toTitleCase(document.getElementById('famSubFamily').value),
-                phone: document.getElementById('famPhone').value,
+                phone: normalizedPhone,
                 place: toTitleCase(document.getElementById('famPlace').value)
             };
             if(!data.name || !data.phone) return alert("Name and Phone required!");
@@ -593,13 +624,12 @@
                 newName = newName.trim();
                 await db.collection("family_meta").doc(currentKey).set({ displayName: newName });
                 familyMeta[currentKey] = newName;
-                populateDropdown(); // refresh dropdown text
+                populateDropdown();
                 if (isGlobalSearch) await performGlobalSearch();
                 else loadFamilyData();
             }
         };
 
-        // Prompt to add an existing collection (e.g., contacts_ranjith_relatives)
         window.promptAddExistingFamily = async function() {
             let collectionName = prompt("Enter the exact Firestore collection name (e.g., contacts_ranjith_relatives):");
             if (!collectionName) return;
@@ -609,21 +639,18 @@
             }
             let displayName = prompt("Display name for this family:", collectionName.replace("contacts_", "").replace(/_/g, " "));
             if (!displayName) displayName = collectionName;
-            // Check if already exists
             if (familyMeta[collectionName]) {
                 alert("This family already exists in the list.");
                 return;
             }
-            // Add to family_meta
             await db.collection("family_meta").doc(collectionName).set({ displayName });
             familyMeta[collectionName] = displayName;
             populateDropdown();
-            // Optionally switch to this family
             collectionSelector.value = collectionName;
             currentCollectionName = collectionName;
             localStorage.setItem('activeFamilyCollection', currentCollectionName);
             loadFamilyData();
-            alert(`Family "${displayName}" added. You can now view and edit its contacts.`);
+            alert(`Family "${displayName}" added.`);
         };
 
         window.openCreateFamilyModal = function() {
@@ -638,7 +665,6 @@
             if(!newFamily) return alert("Please enter a family name");
             let collectionKey = "contacts_" + newFamily.toLowerCase().replace(/\s+/g, '_');
             if (familyMeta[collectionKey]) return alert("Family already exists!");
-            // Add to family_meta (collection will be created automatically when first contact added)
             await db.collection("family_meta").doc(collectionKey).set({ displayName: newFamily });
             familyMeta[collectionKey] = newFamily;
             populateDropdown();
@@ -648,16 +674,13 @@
             isGlobalSearch = false;
             globalSearchToggle.checked = false;
             closeCreateFamilyModal();
-            loadFamilyData(); // will listen to the new (empty) collection
+            loadFamilyData();
         };
 
         globalSearchToggle.addEventListener('change', (e) => {
             isGlobalSearch = e.target.checked;
-            if (isGlobalSearch) {
-                performGlobalSearch();
-            } else {
-                loadFamilyData();
-            }
+            if (isGlobalSearch) performGlobalSearch();
+            else loadFamilyData();
         });
 
         collectionSelector.addEventListener('change', (e) => {
@@ -671,11 +694,8 @@
         });
 
         document.getElementById('familySearch').addEventListener('input', () => {
-            if (isGlobalSearch) {
-                performGlobalSearch();
-            } else {
-                applyFamilySearch();
-            }
+            if (isGlobalSearch) performGlobalSearch();
+            else applyFamilySearch();
         });
 
         window.switchTab = function(tab) {
@@ -698,11 +718,7 @@
 
         document.getElementById('date').valueAsDate = new Date();
         loadMoyData();
-
-        // Initialize: load families from family_meta, then load data for current selection
-        loadFamilyMeta().then(() => {
-            loadFamilyData();
-        });
+        loadFamilyMeta().then(() => loadFamilyData());
 
         document.addEventListener("click", function(e) {
             if(!e.target.closest('.suggestion-box') && !e.target.matches('input')) {
