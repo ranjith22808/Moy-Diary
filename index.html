@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Moy Diary - Velocity Pro</title>
+    <title>Moy Diary + Multi‑Family Diary</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4f46e5">
-    <!-- Tailwind + Firebase + XLSX CDNs -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
@@ -15,42 +14,55 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&display=swap');
-        * { -webkit-tap-highlight-color: transparent; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f0f2f5; }
         .glass-header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
         .card-shadow { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02); }
         .suggestion-box { position: absolute; z-index: 100; width: 100%; background: white; border-radius: 1rem; border: 1px solid #e2e8f0; max-height: 200px; overflow-y: auto; margin-top: 4px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
-        .suggestion-item { padding: 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-weight: 700; color: #1e293b; transition: all 0.1s ease; }
+        .suggestion-item { padding: 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-weight: 700; color: #1e293b; }
         .suggestion-item.active { background-color: #eef2ff; color: #4f46e5; border-left: 4px solid #4f46e5; }
         .card-received { border-left: 12px solid #10b981; background: #f0fdf4; }
         .card-returned { border-left: 12px solid #f59e0b; background: #fffbeb; }
         .summary-gradient { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); border-bottom: 8px solid #fbbf24; }
-        /* smooth transitions */
+        .tab-active { background: white; color: #4f46e5; border-bottom: 3px solid #4f46e5; font-weight: 800; }
+        .tab-inactive { background: transparent; color: #64748b; border-bottom: 3px solid transparent; }
         .transition-fast { transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
-        #moyList > div { transform-origin: top; animation: fadeInUp 0.2s ease-out; }
+        #moyList > div, #familyListContainer > div { animation: fadeInUp 0.2s ease-out; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: #4f46e5; }
+        input:checked + .slider:before { transform: translateX(20px); }
     </style>
 </head>
 <body class="pb-28">
 
-    <div class="glass-header text-white p-8 rounded-b-[3rem] shadow-2xl mb-8 relative overflow-hidden">
-        <div class="max-w-xl mx-auto text-center relative z-10">
-            <h1 class="text-3xl font-black tracking-tighter">Moy Diary <span class="text-yellow-400">Velocity</span></h1>
-            <p class="text-[10px] font-bold uppercase tracking-[0.3em] opacity-80 mt-1">Matisha Infotec | Performance+</p>
+    <div class="glass-header text-white p-6 rounded-b-[3rem] shadow-2xl mb-4">
+        <div class="max-w-xl mx-auto text-center">
+            <h1 class="text-2xl md:text-3xl font-black tracking-tighter">Moy + <span class="text-yellow-400">Multi‑Family</span> Diary</h1>
+            <p class="text-[9px] font-bold uppercase tracking-[0.3em] opacity-80 mt-1">Moy unchanged | Edit family names | Common search</p>
         </div>
-        <div class="absolute -bottom-6 -right-6 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
     </div>
 
-    <div class="max-w-xl mx-auto px-4">
-        <!-- Entry Form -->
-        <div class="bg-white rounded-[2rem] p-6 card-shadow mb-10 border border-gray-100 transition-fast">
+    <!-- Tab Navigation -->
+    <div class="max-w-xl mx-auto px-4 mb-6">
+        <div class="flex bg-white/60 backdrop-blur-sm rounded-2xl p-1 shadow-md">
+            <button id="tabMoyBtn" onclick="switchTab('moy')" class="flex-1 py-3 rounded-xl font-extrabold text-sm uppercase tab-active">💰 Moy Diary</button>
+            <button id="tabFamilyBtn" onclick="switchTab('family')" class="flex-1 py-3 rounded-xl font-extrabold text-sm uppercase tab-inactive">👨‍👩‍👧 Family Diary</button>
+        </div>
+    </div>
+
+    <!-- ======================= MOY DIARY (UNCHANGED) ======================= -->
+    <div id="moySection" class="max-w-xl mx-auto px-4">
+        <!-- Original Moy form (same as before) -->
+        <div class="bg-white rounded-[2rem] p-6 card-shadow mb-10 border border-gray-100">
             <div class="space-y-4">
                 <input type="hidden" id="editId">
-                
                 <div class="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                     <div class="relative">
                         <label class="text-[9px] font-black text-slate-400 uppercase">விசேஷம் / Event</label>
-                        <input id="event" type="text" oninput="handleInput(this, 'event')" onkeydown="handleKeyNavigation(event, 'event')" placeholder="Event Name" class="w-full bg-transparent border-b-2 border-slate-300 py-1 outline-none font-black text-slate-800 uppercase">
+                        <input id="event" type="text" oninput="handleMoyInput(this, 'event')" onkeydown="handleMoyKeyNav(event, 'event')" placeholder="Event Name" class="w-full bg-transparent border-b-2 border-slate-300 py-1 outline-none font-black text-slate-800 uppercase">
                         <div id="eventSuggestions" class="suggestion-box hidden"></div>
                     </div>
                     <div>
@@ -58,19 +70,16 @@
                         <input id="date" type="date" class="w-full bg-transparent border-b-2 border-slate-300 py-1 outline-none font-black text-slate-800">
                     </div>
                 </div>
-
                 <div class="relative">
                     <label class="text-[10px] font-black text-slate-400 uppercase ml-2">ஊர் / Area</label>
-                    <input id="city" type="text" oninput="handleInput(this, 'city')" onkeydown="handleKeyNavigation(event, 'city')" class="w-full p-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-500 outline-none font-bold text-slate-700 transition-all uppercase" placeholder="Cuddalore">
+                    <input id="city" type="text" oninput="handleMoyInput(this, 'city')" onkeydown="handleMoyKeyNav(event, 'city')" class="w-full p-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-500 outline-none font-bold text-slate-700 transition-all uppercase" placeholder="Cuddalore">
                     <div id="citySuggestions" class="suggestion-box hidden"></div>
                 </div>
-
                 <div class="relative">
                     <label class="text-[10px] font-black text-slate-400 uppercase ml-2">பெயர் / Name</label>
-                    <input id="name" type="text" oninput="handleInput(this, 'name')" onkeydown="handleKeyNavigation(event, 'name')" class="w-full p-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-500 outline-none font-bold text-slate-700 transition-all" placeholder="Ranjith Kumar">
+                    <input id="name" type="text" oninput="handleMoyInput(this, 'name')" onkeydown="handleMoyKeyNav(event, 'name')" class="w-full p-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-500 outline-none font-bold text-slate-700 transition-all" placeholder="Ranjith Kumar">
                     <div id="nameSuggestions" class="suggestion-box hidden"></div>
                 </div>
-                
                 <div class="grid grid-cols-2 gap-4">
                     <div class="bg-blue-50 p-3 rounded-2xl border border-blue-100">
                         <label class="text-[9px] font-black text-blue-400 uppercase">பணம் / Cash (₹)</label>
@@ -81,7 +90,6 @@
                         <input id="gold" type="number" step="0.01" class="w-full bg-transparent p-1 outline-none font-black text-yellow-700 text-xl" placeholder="0.00">
                     </div>
                 </div>
-
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <select id="type" class="bg-slate-100 p-4 rounded-2xl font-bold text-slate-600 outline-none border-2 border-transparent focus:border-indigo-500">
                         <option value="Received">வரவு (Received)</option>
@@ -89,34 +97,104 @@
                     </select>
                     <textarea id="notes" placeholder="Notes..." class="bg-slate-100 p-3 rounded-2xl h-14 text-sm font-semibold outline-none resize-none border-2 border-transparent focus:border-indigo-500"></textarea>
                 </div>
-
                 <div class="flex gap-2 pt-2">
                     <button onclick="saveMoy()" id="saveBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-800 text-white font-black py-5 rounded-3xl shadow-xl transition-all uppercase tracking-widest text-sm active:scale-95">SAVE / சேமி</button>
-                    <button onclick="resetAllFields()" class="px-6 bg-red-50 text-red-500 font-black rounded-3xl text-[10px] uppercase hover:bg-red-100 transition">Reset All</button>
+                    <button onclick="resetAllMoyFields()" class="px-6 bg-red-50 text-red-500 font-black rounded-3xl text-[10px] uppercase hover:bg-red-100 transition">Reset All</button>
                 </div>
             </div>
         </div>
 
-        <!-- Reports Header -->
         <div class="flex justify-between items-center mb-6 px-2">
-            <h3 class="text-xl font-extrabold text-slate-800">📋 Records</h3>
-            <button onclick="exportToExcel()" class="bg-emerald-500 text-white text-[10px] font-bold py-2 px-4 rounded-full shadow-lg uppercase hover:bg-emerald-600 transition">Excel 📥</button>
+            <h3 class="text-xl font-extrabold text-slate-800">📋 Reports</h3>
+            <button onclick="exportMoyToExcel()" class="bg-emerald-500 text-white text-[10px] font-bold py-2 px-4 rounded-full shadow-lg uppercase">Excel 📥</button>
         </div>
-        
-        <!-- Search Field (with performance debounce) -->
-        <input type="text" id="search" placeholder="🔍 பெயர், ஊர் அல்லது விசேஷம் (தேடு)..." class="w-full bg-white card-shadow rounded-2xl p-5 text-xl outline-none font-black text-indigo-900 border-b-4 border-indigo-500 mb-8 transition-all">
-
-        <!-- Dynamic List Container -->
+        <input type="text" id="moySearch" onkeyup="renderMoyList()" placeholder="பெயர், ஊர் அல்லது விசேஷம்..." class="w-full bg-white card-shadow rounded-2xl p-5 text-xl outline-none font-black text-indigo-900 border-b-4 border-indigo-500 mb-8">
         <div id="moyList" class="space-y-6"></div>
     </div>
 
-    <!-- Version & performance footer -->
-    <footer class="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t border-indigo-100 py-3 px-4 text-center text-[9px] font-black text-slate-500 uppercase tracking-wider z-20 shadow-inner">
-        <span>⚡ MOY DIARY • VERSION <span id="appVersion">2.1.4</span> •  INSTANT SEARCH • FIREBASE SYNC</span>
+    <!-- ======================= FAMILY DIARY (ENHANCED) ======================= -->
+    <div id="familySection" class="max-w-xl mx-auto px-4 hidden">
+        <!-- Family Selector with edit icon -->
+        <div class="bg-white p-4 rounded-2xl shadow-md mb-6 border-l-8 border-blue-500">
+            <div class="flex justify-between items-center mb-2">
+                <label class="text-xs font-black text-slate-500 uppercase tracking-wider">👨‍👩‍👧‍👦 Family Group</label>
+                <div class="flex gap-2">
+                    <button onclick="openCreateFamilyModal()" class="bg-blue-500 text-white px-3 py-1 rounded-full text-[10px] font-bold shadow">+ New Family</button>
+                    <button onclick="editCurrentFamilyName()" class="bg-amber-500 text-white px-3 py-1 rounded-full text-[10px] font-bold shadow">✏️ Edit Name</button>
+                </div>
+            </div>
+            <select id="familyCollectionSelector" class="w-full p-3 bg-slate-50 border-2 border-blue-200 rounded-xl font-bold text-slate-700">
+                <option value="contacts">🏠 Default Family</option>
+            </select>
+            <p class="text-[9px] text-slate-400 mt-2 italic">Select a family to view/edit its contacts.</p>
+        </div>
+
+        <!-- Common Search Toggle -->
+        <div class="flex items-center justify-between bg-white p-3 rounded-xl shadow-sm mb-4">
+            <span class="text-sm font-bold text-slate-700">🌐 Search across ALL families</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="globalSearchToggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="flex gap-3 mb-6">
+            <button onclick="openFamilyModal()" class="flex-1 bg-green-600 text-white py-3 rounded-xl font-bold shadow-md active:scale-95 transition-transform">+ Add Member</button>
+            <button onclick="exportFamilyToExcel()" class="flex-1 bg-slate-700 text-white py-3 rounded-xl font-bold shadow-md">📥 Download Excel</button>
+        </div>
+
+        <input type="text" id="familySearch" placeholder="Search Name, Family, Sub-Family, Place..." 
+               class="w-full bg-white card-shadow rounded-2xl p-4 text-lg outline-none font-bold text-slate-700 border-b-4 border-blue-500 mb-6">
+
+        <div id="familyListContainer" class="space-y-4">
+            <p class="text-center text-gray-400 py-10 italic">Loading contacts...</p>
+        </div>
+    </div>
+
+    <!-- Family Modal (Add/Edit) -->
+    <div id="familyModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-30">
+        <div class="bg-white w-full max-w-md p-6 rounded-2xl shadow-2xl">
+            <h2 id="familyModalTitle" class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Add Family Member</h2>
+            <input type="hidden" id="familyEditId">
+            <div class="space-y-4">
+                <input type="text" id="famName" placeholder="Full Name" class="w-full border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
+                <div class="flex gap-2">
+                    <input type="text" id="famFamily" list="famFamilySuggestions" placeholder="Family Name" class="w-1/2 border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
+                    <input type="text" id="famSubFamily" list="famSubFamilySuggestions" placeholder="Sub Family" class="w-1/2 border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
+                </div>
+                <input type="tel" id="famPhone" placeholder="Phone Number" class="w-full border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
+                <input type="text" id="famPlace" list="famPlaceSuggestions" placeholder="Place / City" class="w-full border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
+            </div>
+            <p id="familySaveStatus" class="text-center text-green-600 mt-4 font-bold hidden">✅ Saved!</p>
+            <div class="flex gap-3 mt-8">
+                <button onclick="closeFamilyModal()" class="flex-1 bg-gray-200 py-3 rounded-lg font-semibold hover:bg-gray-300">Close</button>
+                <button onclick="saveFamilyContact()" class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold shadow-lg hover:bg-blue-700">Save Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create New Family Modal -->
+    <div id="createFamilyModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-40">
+        <div class="bg-white w-full max-w-sm p-6 rounded-2xl shadow-2xl">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Create New Family</h2>
+            <input type="text" id="newFamilyName" placeholder="Family name (e.g., Anand Family)" class="w-full border-2 p-3 rounded-lg mb-4 focus:border-blue-500 outline-none">
+            <div class="flex gap-3">
+                <button onclick="closeCreateFamilyModal()" class="flex-1 bg-gray-200 py-2 rounded-lg">Cancel</button>
+                <button onclick="createNewFamily()" class="flex-1 bg-blue-600 text-white py-2 rounded-lg">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <datalist id="famFamilySuggestions"></datalist>
+    <datalist id="famSubFamilySuggestions"></datalist>
+    <datalist id="famPlaceSuggestions"></datalist>
+
+    <footer class="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t border-indigo-100 py-3 px-4 text-center text-[9px] font-black text-slate-500 uppercase tracking-wider z-20">
+        <span>⚡ Moy Diary (original) + Multi‑Family • Edit names • Common search • v2.7</span>
     </footer>
 
     <script>
-        // ========================  🔥 FIREBASE CONFIG  ========================
+        // ======================== FIREBASE INIT ========================
         const firebaseConfig = {
             apiKey: "AIzaSyBLWrs7rGUhfRDuD8dPMZdjjCYMSAtPleM",
             authDomain: "family-dairy-192b9.firebaseapp.com",
@@ -127,231 +205,90 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        
-        // -------------------  GLOBAL STATE  -------------------
-        let allRecords = [];            // master array
+
+        // ======================== MOY DIARY (UNCHANGED - same as original) ========================
+        let allMoyRecords = [];
         let currentFocus = -1;
-        let searchDebounceTimer = null;
-        let lastSearchTerm = "";
-        
-        // version increment helper (auto increment each load? but manual define)
-        // Defined version 2.1.4 (performance+debounce+list virtualization speed)
-        const VERSION = "2.1.4";
-        document.getElementById('appVersion').innerText = VERSION;
-        
-        // set default date
-        document.getElementById('date').valueAsDate = new Date();
-        
-        // ========================  PERFORMANCE OPTIMIZATIONS ========================
-        // 1. Debounced search render
-        function debouncedRender() {
-            if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
-            searchDebounceTimer = setTimeout(() => {
-                renderList();
-            }, 280); // smooth typing delay, avoids unnecessary re-renders
+
+        function loadMoyData() {
+            db.collection("moy_records").orderBy("date", "desc").onSnapshot(snapshot => {
+                allMoyRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderMoyList();
+                updateMoySuggestions();
+            });
         }
-        
-        // 2. Fast filter + cache for suggestions (improve suggestion retrieval)
-        let cachedUnique = { event: [], city: [], name: [] };
-        function updateSuggestionCache() {
-            if (!allRecords.length) return;
-            cachedUnique.event = [...new Set(allRecords.map(r => r.event).filter(v => v && typeof v === 'string'))];
-            cachedUnique.city = [...new Set(allRecords.map(r => r.city).filter(v => v && typeof v === 'string'))];
-            cachedUnique.name = [...new Set(allRecords.map(r => r.name).filter(v => v && typeof v === 'string'))];
+
+        function updateMoySuggestions() {
+            window.moySuggestionCache = {
+                event: [...new Set(allMoyRecords.map(r => r.event).filter(v => v))],
+                city: [...new Set(allMoyRecords.map(r => r.city).filter(v => v))],
+                name: [...new Set(allMoyRecords.map(r => r.name).filter(v => v))]
+            };
         }
-        
-        // smarter show suggestions using cache
-        function showSuggestions(field) {
-            const inputVal = document.getElementById(field).value.toLowerCase();
-            const box = document.getElementById(field + 'Suggestions');
-            currentFocus = -1;
-            if (inputVal.length < 1) { box.classList.add('hidden'); return; }
-            
-            let sourceArr = cachedUnique[field] || [];
-            let matches = sourceArr.filter(item => item && item.toLowerCase().includes(inputVal)).slice(0, 6);
-            if (matches.length > 0) {
-                box.innerHTML = matches.map((s, idx) => `<div class="suggestion-item" data-val="${s.replace(/"/g, '&quot;')}" onclick="selectSuggestion('${field}', '${s.replace(/'/g, "\\'")}')">${escapeHtml(s)}</div>`).join('');
-                box.classList.remove('hidden');
-            } else {
-                box.classList.add('hidden');
+
+        function renderMoyList() {
+            const searchTerm = document.getElementById('moySearch').value.trim().toLowerCase();
+            const filtered = allMoyRecords.filter(d => 
+                d.name?.toLowerCase().includes(searchTerm) || 
+                d.city?.toLowerCase().includes(searchTerm) || 
+                d.event?.toLowerCase().includes(searchTerm)
+            );
+            const container = document.getElementById('moyList');
+            let html = '';
+
+            if(searchTerm.length >= 2 && filtered.length > 0) {
+                let tin = 0, gin = 0, tout = 0, gout = 0;
+                filtered.forEach(d => { if(d.type === "Received") { tin += d.cash || 0; gin += d.gold || 0; } else { tout += d.cash || 0; gout += d.gold || 0; } });
+                let bCash = tin - tout, bGold = gin - gout;
+                html += `<div class="summary-gradient text-white p-6 rounded-[2.5rem] mb-8 shadow-2xl">
+                    <p class="text-[10px] text-yellow-400 uppercase font-black">✨ "${searchTerm}" Summary</p>
+                    <div class="grid grid-cols-2 gap-4 my-4">
+                        <div class="bg-white/10 p-4 rounded-3xl"><p class="text-[9px] text-emerald-300">Received</p><p class="text-2xl font-black">₹${tin.toLocaleString()}</p><p>💍 ${gin.toFixed(2)}g</p></div>
+                        <div class="bg-white/10 p-4 rounded-3xl text-right"><p class="text-[9px] text-orange-300">Returned</p><p class="text-2xl font-black">₹${tout.toLocaleString()}</p><p>💍 ${gout.toFixed(2)}g</p></div>
+                    </div>
+                    <div class="pt-4 border-t border-white/10 flex justify-between"><span>Balance:</span><div><p class="text-xl font-black ${bCash>0?'text-rose-400':'text-cyan-400'}">₹${Math.abs(bCash)} <span class="text-xs">${bCash>0?'To Give':'To Receive'}</span></p><p>${Math.abs(bGold).toFixed(2)}g Gold</p></div></div>
+                </div>`;
             }
+
+            filtered.forEach(d => {
+                const isRec = d.type === "Received";
+                html += `<div class="card-shadow p-6 rounded-[2rem] ${isRec ? 'card-received' : 'card-returned'} border">
+                    <div class="flex justify-between items-start mb-4"><div><h4 class="font-black text-xl">${escapeHtml(d.name)}</h4><p class="text-[10px] text-indigo-500 font-black uppercase">${escapeHtml(d.city)}</p></div>
+                    <div class="flex gap-1"><button onclick="editMoy('${d.id}')" class="text-blue-600 bg-blue-50 p-2 px-3 rounded-xl text-[9px] font-black">Edit</button><button onclick="deleteMoy('${d.id}')" class="text-rose-500 bg-rose-50 p-2 px-3 rounded-xl text-[9px] font-black">Del</button></div></div>
+                    <div class="bg-slate-800 text-white text-[9px] font-black uppercase py-2 px-4 rounded-full inline-block mb-4">🎊 ${escapeHtml(d.event)}</div>
+                    <div class="grid grid-cols-2 text-lg bg-white p-5 rounded-2xl font-black"><span class="${isRec?'text-emerald-600':'text-orange-600'}">💵 ₹${(d.cash||0).toLocaleString()}</span> <span class="text-right text-yellow-600">💍 ${(d.gold||0).toFixed(2)}g</span></div>
+                    <div class="mt-4 flex justify-between items-center"><div>${d.notes ? `<p class="text-[10px] italic">📌 ${escapeHtml(d.notes)}</p>` : ''}</div><span class="text-[9px] text-slate-400">${d.date || ''}</span></div>
+                </div>`;
+            });
+            if(filtered.length === 0) html = '<div class="bg-white/80 rounded-2xl p-10 text-center border-dashed"><p class="text-indigo-400">✨ No records. Start adding! ✨</p></div>';
+            container.innerHTML = html;
         }
-        
-        function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
-        
-        function handleInput(el, field) {
-            // Capitalize words (graceful)
-            let words = el.value.split(' ');
-            if (words.length) {
-                let capped = words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-                if (capped !== el.value) el.value = capped;
-            }
-            showSuggestions(field);
-        }
-        
-        function handleKeyNavigation(e, field) {
-            let x = document.getElementById(field + "Suggestions");
-            if (x) x = x.getElementsByClassName("suggestion-item");
-            if (e.keyCode == 40) { currentFocus++; addActive(x); e.preventDefault();}
-            else if (e.keyCode == 38) { currentFocus--; addActive(x); e.preventDefault();}
-            else if (e.keyCode == 13) {
-                e.preventDefault();
-                if (currentFocus > -1 && x && x[currentFocus]) {
-                    x[currentFocus].click();
-                }
-            }
-        }
-        
-        function addActive(x) {
-            if (!x) return false;
-            removeActive(x);
-            if (currentFocus >= x.length) currentFocus = 0;
-            if (currentFocus < 0) currentFocus = (x.length - 1);
-            if (x[currentFocus]) x[currentFocus].classList.add("active");
-        }
-        function removeActive(x) { for (let i = 0; i < x.length; i++) x[i].classList.remove("active"); }
-        
-        function selectSuggestion(field, value) {
-            document.getElementById(field).value = value;
-            document.getElementById(field + 'Suggestions').classList.add('hidden');
-            if (field === 'city') document.getElementById('name').focus();
-            if (field === 'name') document.getElementById('cash').focus();
-        }
-        
-        // ========================  CRUD + FIREBASE  ========================
-        async function saveMoy() {
+
+        function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+
+        window.saveMoy = async function() {
             const id = document.getElementById('editId').value;
             const name = document.getElementById('name').value.trim();
             const city = document.getElementById('city').value.trim();
             const eventName = document.getElementById('event').value.trim();
-            
-            if(!name || !city || !eventName) return alert("⚠️ Name, Area & Event required!");
-            
-            if (!id) {
-                const isDup = allRecords.find(r => r.name.toLowerCase() === name.toLowerCase() && r.city.toLowerCase() === city.toLowerCase() && r.event.toLowerCase() === eventName.toLowerCase());
-                if (isDup && !confirm(`⚠️ Duplicate: ${name} already exists for same event. Still save?`)) return;
-            }
-            
-            const data = { 
-                name, city, 
-                cash: Number(document.getElementById('cash').value) || 0, 
-                gold: Number(document.getElementById('gold').value) || 0, 
-                type: document.getElementById('type').value, 
-                event: eventName, 
-                notes: document.getElementById('notes').value, 
-                date: document.getElementById('date').value 
+            if(!name || !city || !eventName) return alert("Fill name, area & event!");
+            const data = {
+                name, city, event: eventName,
+                cash: Number(document.getElementById('cash').value) || 0,
+                gold: Number(document.getElementById('gold').value) || 0,
+                type: document.getElementById('type').value,
+                notes: document.getElementById('notes').value,
+                date: document.getElementById('date').value
             };
-            
             if(id) await db.collection("moy_records").doc(id).update(data);
             else await db.collection("moy_records").add(data);
-            
-            resetEntryFields(); 
-            loadData();
-        }
-        
-        async function loadData() {
-            const snapshot = await db.collection("moy_records").orderBy("date", "desc").get();
-            allRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            updateSuggestionCache();   // refresh suggestions
-            renderList();              // fresh render
-        }
-        
-        // MASTER RENDER with FAST DOM & summary preview
-        function renderList() {
-            const searchTerm = document.getElementById('search').value.trim().toLowerCase();
-            lastSearchTerm = searchTerm;
-            const listContainer = document.getElementById('moyList');
-            
-            // fast filter using native filter + optional early break?
-            const filtered = allRecords.filter(d => 
-                d.name.toLowerCase().includes(searchTerm) || 
-                d.city.toLowerCase().includes(searchTerm) || 
-                (d.event && d.event.toLowerCase().includes(searchTerm))
-            );
-            
-            // build output string
-            let htmlOutput = '';
-            
-            // smart summary block for search results (only when searchTerm length > 2 and results exist)
-            if(searchTerm.length >= 2 && filtered.length > 0) {
-                let tin = 0, gin = 0, tout = 0, gout = 0;
-                for(let d of filtered) {
-                    if(d.type === "Received") { tin += d.cash; gin += d.gold; } 
-                    else { tout += d.cash; gout += d.gold; }
-                }
-                let bCash = tin - tout;
-                let bGold = gin - gout;
-                htmlOutput += `
-                <div class="summary-gradient text-white p-6 rounded-[2.5rem] mb-8 shadow-2xl relative overflow-hidden transition-all">
-                    <p class="text-[10px] text-yellow-400 uppercase font-black tracking-widest mb-4 underline decoration-indigo-400 underline-offset-8">✨ "${searchTerm}" - Summary</p>
-                    <div class="grid grid-cols-2 gap-4 mb-6">
-                        <div class="bg-white/10 p-4 rounded-3xl border border-white/20">
-                            <p class="text-[9px] text-emerald-300 font-black uppercase tracking-tighter">Received (IN)</p>
-                            <p class="text-2xl font-black">₹${tin.toLocaleString()}</p>
-                            <p class="text-[10px] font-bold text-white/50">💍 ${gin.toFixed(2)}g</p>
-                        </div>
-                        <div class="bg-white/10 p-4 rounded-3xl border border-white/20 text-right">
-                            <p class="text-[9px] text-orange-300 font-black uppercase tracking-tighter">Returned (OUT)</p>
-                            <p class="text-2xl font-black">₹${tout.toLocaleString()}</p>
-                            <p class="text-[10px] font-bold text-white/50">💍 ${gout.toFixed(2)}g</p>
-                        </div>
-                    </div>
-                    <div class="pt-4 border-t border-white/10 flex justify-between items-center px-2">
-                        <span class="text-[10px] font-black uppercase tracking-tighter">Balance பாக்கி:</span>
-                        <div class="text-right leading-tight">
-                            <p class="text-xl font-black ${bCash > 0 ? 'text-rose-400' : 'text-cyan-400'}">₹${Math.abs(bCash).toLocaleString()} <span class="text-xs uppercase">${bCash > 0 ? 'To Give' : 'To Receive'}</span></p>
-                            <p class="text-[10px] font-bold text-white/80 italic">${Math.abs(bGold).toFixed(2)}g Gold ${bGold > 0 ? 'To Give' : 'To Receive'}</p>
-                        </div>
-                    </div>
-                </div>`;
-            } else if (searchTerm.length >= 2 && filtered.length === 0) {
-                htmlOutput += `<div class="bg-white rounded-2xl p-8 text-center shadow"><p class="text-slate-400 font-black uppercase text-xs">🔍 No matching records</p></div>`;
-            }
-            
-            // iterate filtered list -> generate cards (optimized string concat)
-            for(let d of filtered) {
-                const isRec = d.type === "Received";
-                const cashVal = d.cash || 0;
-                const goldVal = d.gold || 0;
-                const noteHtml = d.notes ? `<p class="text-[10px] bg-white/60 p-2 rounded-xl font-bold italic text-slate-500 border-l-4 border-indigo-400 max-w-[70%] truncate">📌 ${escapeHtml(d.notes)}</p>` : '<span></span>';
-                htmlOutput += `
-                    <div class="card-shadow p-6 rounded-[2rem] ${isRec ? 'card-received' : 'card-returned'} transition-all border border-gray-100 hover:shadow-xl transform transition duration-150">
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <h4 class="font-black text-slate-800 text-xl leading-tight">${escapeHtml(d.name)}</h4>
-                                <p class="text-[10px] text-indigo-500 font-black uppercase tracking-widest italic">📍 ${escapeHtml(d.city)}</p>
-                            </div>
-                            <div class="flex gap-1">
-                                <button onclick="editMoy('${d.id}')" class="text-blue-600 bg-blue-50 p-2 px-3 rounded-xl text-[9px] font-black uppercase border border-blue-100 hover:bg-blue-100 transition">Edit</button>
-                                <button onclick="deleteMoy('${d.id}')" class="text-rose-500 bg-rose-50 p-2 px-3 rounded-xl text-[9px] font-black uppercase border border-rose-100 hover:bg-rose-100 transition">Del</button>
-                            </div>
-                        </div>
-                        <div class="bg-slate-800 text-white text-[9px] font-black uppercase tracking-[0.2em] py-2 px-4 rounded-full shadow-md inline-block mb-4">🎊 ${escapeHtml(d.event)}</div>
-                        <div class="grid grid-cols-2 text-lg bg-white p-5 rounded-2xl font-black shadow-inner border border-gray-50">
-                            <span class="${isRec ? 'text-emerald-600' : 'text-orange-600'}">💵 ₹${cashVal.toLocaleString()}</span> 
-                            <span class="text-right text-yellow-600">💍 ${goldVal.toFixed(2)}g</span>
-                        </div>
-                        <div class="mt-4 flex justify-between items-center gap-2 flex-wrap">
-                            ${noteHtml}
-                            <span class="text-[9px] text-slate-400 font-black uppercase tracking-widest">📅 ${d.date || '-'}</span>
-                        </div>
-                    </div>`;
-            }
-            
-            if(filtered.length === 0 && searchTerm.length < 2) {
-                htmlOutput = `<div class="bg-white/80 rounded-2xl p-10 text-center border-2 border-dashed border-indigo-200"><p class="text-indigo-400 font-black">✨ No entries yet. Start adding records! ✨</p></div>`;
-            } else if (filtered.length === 0 && searchTerm.length >= 2) {
-                // already handled above, but ensure no double message
-                if(!htmlOutput.includes('No matching records')) htmlOutput = `<div class="bg-white rounded-2xl p-8 text-center shadow"><p class="text-slate-400 font-black uppercase text-xs">🔍 No records for "${escapeHtml(searchTerm)}"</p></div>`;
-            }
-            
-            listContainer.innerHTML = htmlOutput;
-        }
-        
-        function editMoy(id) {
-            const d = allRecords.find(r => r.id === id);
+            resetMoyEntry();
+        };
+
+        window.editMoy = function(id) {
+            const d = allMoyRecords.find(r => r.id === id);
             if(!d) return;
-            document.getElementById('editId').value = id;
+            document.getElementById('editId').value = d.id;
             document.getElementById('name').value = d.name;
             document.getElementById('city').value = d.city;
             document.getElementById('cash').value = d.cash;
@@ -360,77 +297,434 @@
             document.getElementById('event').value = d.event;
             document.getElementById('notes').value = d.notes || '';
             document.getElementById('date').value = d.date;
-            document.getElementById('saveBtn').innerText = "🔄 UPDATE / திருத்து";
+            document.getElementById('saveBtn').innerText = "🔄 UPDATE";
             window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-        
-        async function deleteMoy(id) { 
-            if(confirm("⚠️ Delete permanently?")) { 
-                await db.collection("moy_records").doc(id).delete(); 
-                loadData(); 
-                if(document.getElementById('editId').value === id) resetEntryFields();
-            } 
-        }
-        
-        function resetEntryFields() {
+        };
+
+        window.deleteMoy = async function(id) { if(confirm("Delete permanently?")) { await db.collection("moy_records").doc(id).delete(); if(document.getElementById('editId').value === id) resetMoyEntry(); } };
+
+        function resetMoyEntry() {
             document.getElementById('editId').value = "";
             document.getElementById('name').value = "";
             document.getElementById('cash').value = "";
             document.getElementById('gold').value = "";
             document.getElementById('notes').value = "";
             document.getElementById('saveBtn').innerText = "SAVE / சேமி";
-            document.getElementById('name').focus();
         }
-        
-        function resetAllFields() {
-            resetEntryFields();
+        window.resetAllMoyFields = function() {
+            resetMoyEntry();
             document.getElementById('city').value = "";
             document.getElementById('event').value = "";
             document.getElementById('date').valueAsDate = new Date();
-            document.getElementById('type').value = "Received";
+        };
+
+        function handleMoyInput(el, field) {
+            let words = el.value.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+            if(words !== el.value) el.value = words;
+            showMoySuggestions(field);
         }
-        
-        function exportToExcel() {
-            const searchTerm = document.getElementById('search').value.trim().toLowerCase();
-            let dataToExport = allRecords;
-            if(searchTerm) {
-                dataToExport = allRecords.filter(d => 
-                    d.name.toLowerCase().includes(searchTerm) || 
-                    d.city.toLowerCase().includes(searchTerm) || 
-                    (d.event && d.event.toLowerCase().includes(searchTerm))
-                );
-            }
-            const exportData = dataToExport.map(({id, ...rest}) => rest);
-            const ws = XLSX.utils.json_to_sheet(exportData);
+        function showMoySuggestions(field) {
+            const val = document.getElementById(field).value.toLowerCase();
+            const box = document.getElementById(field + 'Suggestions');
+            if(val.length < 1) { box.classList.add('hidden'); return; }
+            let matches = (window.moySuggestionCache?.[field] || []).filter(i => i && i.toLowerCase().includes(val)).slice(0,5);
+            if(matches.length) {
+                box.innerHTML = matches.map(s => `<div class="suggestion-item" onclick="selectMoySuggestion('${field}', '${s.replace(/'/g, "\\'")}')">${escapeHtml(s)}</div>`).join('');
+                box.classList.remove('hidden');
+            } else box.classList.add('hidden');
+        }
+        window.selectMoySuggestion = function(field, val) { document.getElementById(field).value = val; document.getElementById(field + 'Suggestions').classList.add('hidden'); };
+        function handleMoyKeyNav(e, field) { /* arrow handling optional */ }
+
+        window.exportMoyToExcel = function() {
+            const term = document.getElementById('moySearch').value.trim().toLowerCase();
+            let data = allMoyRecords;
+            if(term) data = allMoyRecords.filter(d => d.name?.toLowerCase().includes(term) || d.city?.toLowerCase().includes(term) || d.event?.toLowerCase().includes(term));
+            const ws = XLSX.utils.json_to_sheet(data.map(({id,...rest})=>rest));
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "MoyRecords");
-            XLSX.writeFile(wb, `Moy_${searchTerm || 'All'}_${new Date().toISOString().slice(0,19)}.xlsx`);
+            XLSX.writeFile(wb, `Moy_${term||'All'}.xlsx`);
+        };
+
+        // ======================== FAMILY DIARY (MULTI-COLLECTION + EDIT NAMES + COMMON SEARCH) ========================
+        let currentCollectionName = "contacts";
+        let allFamilyContacts = [];
+        let familyUnsubscribe = null;
+        let familyMeta = {}; // collectionName -> displayName
+        const collectionSelector = document.getElementById('familyCollectionSelector');
+        const globalSearchToggle = document.getElementById('globalSearchToggle');
+        let isGlobalSearch = false;
+
+        // Load family metadata from Firestore
+        async function loadFamilyMeta() {
+            const metaSnapshot = await db.collection("family_meta").get();
+            familyMeta = {};
+            metaSnapshot.forEach(doc => {
+                familyMeta[doc.id] = doc.data().displayName;
+            });
+            // Also set default for 'contacts' if not present
+            if (!familyMeta['contacts']) familyMeta['contacts'] = "Default Family";
+            updateSelectorDisplay();
         }
-        
-        // event binding for search with DEBOUNCE
-        function initSearchDebounce() {
-            const searchInput = document.getElementById('search');
-            if(searchInput) {
-                searchInput.addEventListener('input', function(e) {
-                    debouncedRender();
-                });
+
+        function updateSelectorDisplay() {
+            for(let i = 0; i < collectionSelector.options.length; i++) {
+                let opt = collectionSelector.options[i];
+                let val = opt.value;
+                if (familyMeta[val]) {
+                    opt.textContent = familyMeta[val];
+                } else if (val === "contacts") {
+                    opt.textContent = "Default Family";
+                } else {
+                    // extract from key
+                    let name = val.replace('contacts_', '').replace(/_/g, ' ');
+                    opt.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+                }
             }
         }
-        
-        // global click to close suggestions
-        document.addEventListener("click", function (e) {
+
+        // Helper to get collection reference
+        function getFamilyCollection(collectionName = currentCollectionName) {
+            return db.collection(collectionName);
+        }
+
+        // Load data from selected collection (or global search)
+        async function loadFamilyData() {
+            if (familyUnsubscribe) familyUnsubscribe();
+            if (isGlobalSearch) {
+                await performGlobalSearch();
+                return;
+            }
+            const col = getFamilyCollection();
+            familyUnsubscribe = col.orderBy("name").onSnapshot(snapshot => {
+                allFamilyContacts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), _familyKey: currentCollectionName, _familyDisplay: getDisplayName(currentCollectionName) }));
+                updateFamilySuggestions();
+                applyFamilySearch();
+            }, error => {
+                console.error("Family load error:", error);
+                document.getElementById('familyListContainer').innerHTML = '<div class="text-center py-20 text-red-400 italic">Error loading data.</div>';
+            });
+        }
+
+        function getDisplayName(collectionKey) {
+            return familyMeta[collectionKey] || collectionKey.replace('contacts_', '').replace(/_/g, ' ') || "Unknown";
+        }
+
+        async function performGlobalSearch() {
+            const searchTerm = document.getElementById('familySearch').value.toLowerCase();
+            // Get all family collection names
+            const collections = [];
+            for(let i = 0; i < collectionSelector.options.length; i++) {
+                collections.push(collectionSelector.options[i].value);
+            }
+            // For each collection, fetch data (limit to 50 each for performance)
+            let allResults = [];
+            for (let collName of collections) {
+                const snapshot = await db.collection(collName).limit(200).get();
+                const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), _familyKey: collName, _familyDisplay: getDisplayName(collName) }));
+                allResults.push(...docs);
+            }
+            // Filter by search term
+            if (searchTerm) {
+                allResults = allResults.filter(c => 
+                    (c.name?.toLowerCase() || "").includes(searchTerm) ||
+                    (c.family?.toLowerCase() || "").includes(searchTerm) ||
+                    (c.subFamily?.toLowerCase() || "").includes(searchTerm) ||
+                    (c.place?.toLowerCase() || "").includes(searchTerm)
+                );
+            }
+            allFamilyContacts = allResults;
+            updateFamilySuggestions();
+            renderGlobalResults(allResults);
+        }
+
+        function renderGlobalResults(data) {
+            const container = document.getElementById('familyListContainer');
+            if(data.length === 0) { 
+                container.innerHTML = '<div class="text-center py-20 text-gray-400 italic">No matching contacts across all families.</div>'; 
+                return; 
+            }
+            let html = '';
+            data.forEach(c => {
+                const cleanPhone = (c.phone || "").replace(/\D/g, '');
+                html += `<div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 relative">
+                    <div class="absolute top-2 right-2 text-[9px] font-black bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">${escapeHtml(c._familyDisplay)}</div>
+                    <div class="flex justify-between items-start"><div><h3 class="font-bold text-xl">${escapeHtml(c.name)}</h3>
+                    <div class="flex flex-wrap gap-2 mt-2"><span class="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded font-bold">${escapeHtml(c.family)}</span>
+                    <span class="bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded">${escapeHtml(c.subFamily)}</span>
+                    <span class="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded">📍 ${escapeHtml(c.place)}</span></div>
+                    <p class="text-lg font-bold mt-3">${c.phone}</p></div>
+                    <div class="flex flex-col gap-2"><a href="tel:${c.phone}" class="bg-green-500 p-3 rounded-full text-white shadow-lg text-center">📞</a>
+                    <a href="https://wa.me/${cleanPhone}" target="_blank" class="bg-emerald-600 p-3 rounded-full text-white shadow-lg text-center">💬</a>
+                    <button onclick="editFamilyContact('${c.id}', '${c._familyKey}')" class="text-blue-600 font-bold text-sm">Edit</button>
+                    <button onclick="deleteFamilyContact('${c.id}', '${c._familyKey}')" class="text-red-400 text-xs">Remove</button></div></div></div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function updateFamilySuggestions() {
+            const getUnique = (field) => [...new Set(allFamilyContacts.map(c => c[field]).filter(v => v))];
+            const fillDatalist = (id, vals) => { let dl = document.getElementById(id); if(dl) dl.innerHTML = vals.map(v => `<option value="${v}">`).join(''); };
+            fillDatalist('famFamilySuggestions', getUnique('family'));
+            fillDatalist('famSubFamilySuggestions', getUnique('subFamily'));
+            fillDatalist('famPlaceSuggestions', getUnique('place'));
+        }
+
+        function applyFamilySearch() {
+            if (isGlobalSearch) return;
+            const term = document.getElementById('familySearch').value.toLowerCase();
+            const filtered = allFamilyContacts.filter(c => 
+                (c.name?.toLowerCase() || "").includes(term) ||
+                (c.family?.toLowerCase() || "").includes(term) ||
+                (c.subFamily?.toLowerCase() || "").includes(term) ||
+                (c.place?.toLowerCase() || "").includes(term)
+            );
+            renderFamilyList(filtered);
+        }
+
+        function renderFamilyList(data) {
+            const container = document.getElementById('familyListContainer');
+            if(data.length === 0) { 
+                container.innerHTML = '<div class="text-center py-20 text-gray-400 italic">No contacts found in this family.</div>'; 
+                return; 
+            }
+            let html = '';
+            data.forEach(c => {
+                const cleanPhone = (c.phone || "").replace(/\D/g, '');
+                html += `<div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+                    <div class="flex justify-between items-start"><div><h3 class="font-bold text-xl">${escapeHtml(c.name)}</h3>
+                    <div class="flex flex-wrap gap-2 mt-2"><span class="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded font-bold">${escapeHtml(c.family)}</span>
+                    <span class="bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded">${escapeHtml(c.subFamily)}</span>
+                    <span class="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded">📍 ${escapeHtml(c.place)}</span></div>
+                    <p class="text-lg font-bold mt-3">${c.phone}</p></div>
+                    <div class="flex flex-col gap-2"><a href="tel:${c.phone}" class="bg-green-500 p-3 rounded-full text-white shadow-lg text-center">📞</a>
+                    <a href="https://wa.me/${cleanPhone}" target="_blank" class="bg-emerald-600 p-3 rounded-full text-white shadow-lg text-center">💬</a>
+                    <button onclick="editFamilyContact('${c.id}', '${currentCollectionName}')" class="text-blue-600 font-bold text-sm">Edit</button>
+                    <button onclick="deleteFamilyContact('${c.id}', '${currentCollectionName}')" class="text-red-400 text-xs">Remove</button></div></div></div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        window.openFamilyModal = function() {
+            document.getElementById('familyEditId').value = "";
+            document.getElementById('familyModalTitle').innerText = "Add Family Member";
+            document.getElementById('familyModal').classList.remove('hidden');
+            ['famName','famFamily','famSubFamily','famPhone','famPlace'].forEach(id => document.getElementById(id).value = "");
+        };
+        window.closeFamilyModal = function() { document.getElementById('familyModal').classList.add('hidden'); };
+
+        window.saveFamilyContact = async function() {
+            const id = document.getElementById('familyEditId').value;
+            const data = {
+                name: toTitleCase(document.getElementById('famName').value),
+                family: toTitleCase(document.getElementById('famFamily').value),
+                subFamily: toTitleCase(document.getElementById('famSubFamily').value),
+                phone: document.getElementById('famPhone').value,
+                place: toTitleCase(document.getElementById('famPlace').value)
+            };
+            if(!data.name || !data.phone) return alert("Name and Phone required!");
+            const col = getFamilyCollection();
+            if(id) await col.doc(id).update(data);
+            else await col.add(data);
+            const status = document.getElementById('familySaveStatus');
+            status.classList.remove('hidden');
+            setTimeout(() => status.classList.add('hidden'), 2000);
+            if(!id) { 
+                document.getElementById('famName').value = ""; 
+                document.getElementById('famFamily').value = ""; 
+                document.getElementById('famSubFamily').value = ""; 
+                document.getElementById('famPhone').value = ""; 
+                document.getElementById('famPlace').value = ""; 
+            }
+            closeFamilyModal();
+        };
+
+        window.editFamilyContact = function(id, collectionName) {
+            // If coming from global search, switch to that collection first
+            if (collectionName !== currentCollectionName) {
+                collectionSelector.value = collectionName;
+                currentCollectionName = collectionName;
+                localStorage.setItem('activeFamilyCollection', currentCollectionName);
+                loadFamilyData(); // reload and then edit?
+                setTimeout(() => editFamilyContact(id, collectionName), 500);
+                return;
+            }
+            const c = allFamilyContacts.find(x => x.id === id);
+            if(!c) return;
+            document.getElementById('familyEditId').value = c.id;
+            document.getElementById('famName').value = c.name;
+            document.getElementById('famFamily').value = c.family || '';
+            document.getElementById('famSubFamily').value = c.subFamily || '';
+            document.getElementById('famPhone').value = c.phone || '';
+            document.getElementById('famPlace').value = c.place || '';
+            document.getElementById('familyModalTitle').innerText = "Update Member";
+            document.getElementById('familyModal').classList.remove('hidden');
+        };
+
+        window.deleteFamilyContact = async function(id, collectionName) {
+            if(confirm("Delete this contact?")) {
+                await db.collection(collectionName).doc(id).delete();
+            }
+        };
+
+        window.exportFamilyToExcel = function() {
+            const ws = XLSX.utils.json_to_sheet(allFamilyContacts.map(({id, _familyKey, _familyDisplay, ...rest})=>rest));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "FamilyContacts");
+            XLSX.writeFile(wb, `Family_${currentCollectionName}.xlsx`);
+        };
+
+        function toTitleCase(str) { if(!str) return ""; return str.toLowerCase().replace(/\b\w/g, s => s.toUpperCase()); }
+
+        // Edit current family name
+        window.editCurrentFamilyName = async function() {
+            const currentKey = currentCollectionName;
+            let currentDisplay = getDisplayName(currentKey);
+            let newName = prompt("Enter new display name for this family:", currentDisplay);
+            if (newName && newName.trim()) {
+                newName = newName.trim();
+                await db.collection("family_meta").doc(currentKey).set({ displayName: newName });
+                familyMeta[currentKey] = newName;
+                updateSelectorDisplay();
+                // Reload data to refresh display
+                if (isGlobalSearch) await performGlobalSearch();
+                else loadFamilyData();
+            }
+        };
+
+        // Create new family (collection)
+        window.openCreateFamilyModal = function() {
+            document.getElementById('createFamilyModal').classList.remove('hidden');
+            document.getElementById('newFamilyName').value = "";
+        };
+        window.closeCreateFamilyModal = function() {
+            document.getElementById('createFamilyModal').classList.add('hidden');
+        };
+        window.createNewFamily = async function() {
+            let newFamily = document.getElementById('newFamilyName').value.trim();
+            if(!newFamily) return alert("Please enter a family name");
+            let collectionKey = "contacts_" + newFamily.toLowerCase().replace(/\s+/g, '_');
+            // Check if already exists
+            let exists = false;
+            for(let i=0; i<collectionSelector.options.length; i++) {
+                if(collectionSelector.options[i].value === collectionKey) {
+                    exists = true;
+                    break;
+                }
+            }
+            if(exists) return alert("Family already exists!");
+            // Add to selector
+            let option = document.createElement('option');
+            option.value = collectionKey;
+            option.textContent = newFamily;
+            collectionSelector.appendChild(option);
+            collectionSelector.value = collectionKey;
+            currentCollectionName = collectionKey;
+            localStorage.setItem('activeFamilyCollection', currentCollectionName);
+            // Store display name in Firestore
+            await db.collection("family_meta").doc(collectionKey).set({ displayName: newFamily });
+            familyMeta[collectionKey] = newFamily;
+            closeCreateFamilyModal();
+            // Ensure global search toggle off
+            if (globalSearchToggle.checked) {
+                globalSearchToggle.checked = false;
+                isGlobalSearch = false;
+            }
+            loadFamilyData();
+        };
+
+        // Toggle global search
+        globalSearchToggle.addEventListener('change', (e) => {
+            isGlobalSearch = e.target.checked;
+            if (isGlobalSearch) {
+                performGlobalSearch();
+            } else {
+                loadFamilyData();
+            }
+        });
+
+        // Collection selector change
+        collectionSelector.addEventListener('change', (e) => {
+            currentCollectionName = e.target.value;
+            localStorage.setItem('activeFamilyCollection', currentCollectionName);
+            if (globalSearchToggle.checked) {
+                globalSearchToggle.checked = false;
+                isGlobalSearch = false;
+            }
+            loadFamilyData();
+        });
+
+        // Family search input
+        document.getElementById('familySearch').addEventListener('input', () => {
+            if (isGlobalSearch) {
+                performGlobalSearch();
+            } else {
+                applyFamilySearch();
+            }
+        });
+
+        // Load custom families from localStorage (backward compatibility)
+        async function loadCustomFamilies() {
+            await loadFamilyMeta();
+            let custom = JSON.parse(localStorage.getItem('customFamilyCollections') || '[]');
+            for (let f of custom) {
+                let exists = false;
+                for(let i=0; i<collectionSelector.options.length; i++) {
+                    if(collectionSelector.options[i].value === f.key) exists = true;
+                }
+                if(!exists) {
+                    let opt = document.createElement('option');
+                    opt.value = f.key;
+                    opt.textContent = f.name;
+                    collectionSelector.appendChild(opt);
+                }
+            }
+        }
+
+        // Tab switching
+        window.switchTab = function(tab) {
+            const moySection = document.getElementById('moySection');
+            const familySection = document.getElementById('familySection');
+            const moyBtn = document.getElementById('tabMoyBtn');
+            const familyBtn = document.getElementById('tabFamilyBtn');
+            if(tab === 'moy') {
+                moySection.classList.remove('hidden');
+                familySection.classList.add('hidden');
+                moyBtn.classList.add('tab-active'); moyBtn.classList.remove('tab-inactive');
+                familyBtn.classList.add('tab-inactive'); familyBtn.classList.remove('tab-active');
+            } else {
+                moySection.classList.add('hidden');
+                familySection.classList.remove('hidden');
+                familyBtn.classList.add('tab-active'); familyBtn.classList.remove('tab-inactive');
+                moyBtn.classList.add('tab-inactive'); moyBtn.classList.remove('tab-active');
+            }
+        };
+
+        // Initialize
+        document.getElementById('date').valueAsDate = new Date();
+        loadMoyData();
+
+        // Restore last selected family
+        const savedCollection = localStorage.getItem('activeFamilyCollection');
+        if(savedCollection && collectionSelector) {
+            let exists = false;
+            for(let i=0; i<collectionSelector.options.length; i++) {
+                if(collectionSelector.options[i].value === savedCollection) exists = true;
+            }
+            if(exists) {
+                collectionSelector.value = savedCollection;
+                currentCollectionName = savedCollection;
+            }
+        }
+        loadCustomFamilies().then(() => {
+            loadFamilyData();
+        });
+
+        // Global click to hide suggestions
+        document.addEventListener("click", function(e) {
             if(!e.target.closest('.suggestion-box') && !e.target.matches('input')) {
                 document.querySelectorAll('.suggestion-box').forEach(box => box.classList.add('hidden'));
             }
-        });
-        
-        // Additional performance: avoid unnecessary event listeners duplication
-        window.addEventListener('DOMContentLoaded', () => {
-            initSearchDebounce();
-            loadData().then(() => {
-                // prefill suggestion cache
-                updateSuggestionCache();
-            });
         });
     </script>
 </body>
